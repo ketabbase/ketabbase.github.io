@@ -62,6 +62,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // بارگذاری همه پست‌ها و کامنت‌ها برای همه کاربران (مهمان و لاگین)
+    const loadPostsAndComments = () => {
+        console.log('Loading posts and comments for all users...');
+        const q = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
+        onSnapshot(q, async (snapshot) => {
+            const newPosts = [];
+            for (const doc of snapshot.docs) {
+                const postData = { id: doc.id, ...doc.data() };
+                // بارگذاری کامنت‌های هر پست
+                try {
+                    const commentsQuery = query(
+                        collection(window.firebase.db, 'comments'),
+                        where('postId', '==', doc.id),
+                        orderBy('timestamp', 'asc')
+                    );
+                    const commentsSnapshot = await getDocs(commentsQuery);
+                    const comments = [];
+                    commentsSnapshot.forEach((commentDoc) => {
+                        const commentData = commentDoc.data();
+                        comments.push({
+                            id: commentDoc.id,
+                            ...commentData,
+                            timestamp: commentData.timestamp?.toDate ? commentData.timestamp.toDate() : commentData.timestamp
+                        });
+                    });
+                    postData.comments = comments;
+                    console.log(`Loaded ${comments.length} comments for post ${doc.id}`);
+                } catch (commentError) {
+                    console.error('Error loading comments for post:', doc.id, commentError);
+                    postData.comments = [];
+                }
+                newPosts.push(postData);
+            }
+            // فقط اگر تغییر کرده بود رندر کن
+            const postsChanged = JSON.stringify(posts) !== JSON.stringify(newPosts);
+            if (postsChanged) {
+                posts = newPosts;
+                renderPosts();
+                console.log(`Rendered ${newPosts.length} posts with comments`);
+            }
+        });
+    };
+
     // Function to show a specific screen
     const showScreen = (screenId) => {
         console.log('Showing screen:', screenId);
@@ -237,6 +280,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        console.log(`Rendering ${posts.length} posts with comments...`);
+
         // Create a Set to track processed posts to avoid duplicates
         const processedPosts = new Set();
 
@@ -250,6 +295,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentUser && post.userId === currentUser.uid) {
                     const userPostCard = createPostCard(post, true);
                     if (userPostsList) userPostsList.appendChild(userPostCard);
+                }
+                
+                // Log comment count for debugging
+                if (post.comments && post.comments.length > 0) {
+                    console.log(`Post ${post.id}: ${post.comments.length} comments rendered`);
                 }
             }
         });
@@ -490,6 +540,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Update comment count
                     const commentButton = postCard.querySelector('.comment-toggle-button');
                     commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${post.comments.length})`;
+                    
+                    // Show comments section if hidden
+                    const commentsSection = postCard.querySelector('.comments-section');
+                    if (commentsSection && commentsSection.style.display === 'none') {
+                        commentsSection.style.display = 'block';
+                    }
                 }
             }
         }
@@ -700,56 +756,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Load posts from Firebase
+    // Load posts from Firebase (deprecated - using loadPostsAndComments instead)
     const loadPosts = async () => {
-        try {
-            const q = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
-            
-            onSnapshot(q, async (snapshot) => {
-                const newPosts = [];
-                
-                for (const doc of snapshot.docs) {
-                    const postData = { id: doc.id, ...doc.data() };
-                    
-                    // Load comments for this post
-                    try {
-                        const commentsQuery = query(
-                            collection(window.firebase.db, 'comments'),
-                            where('postId', '==', doc.id),
-                            orderBy('timestamp', 'asc')
-                        );
-                        
-                        const commentsSnapshot = await getDocs(commentsQuery);
-                        const comments = [];
-                        commentsSnapshot.forEach((commentDoc) => {
-                            const commentData = commentDoc.data();
-                            comments.push({ 
-                                id: commentDoc.id, 
-                                ...commentData,
-                                timestamp: commentData.timestamp?.toDate ? commentData.timestamp.toDate() : commentData.timestamp
-                            });
-                        });
-                        
-                        postData.comments = comments;
-                        console.log(`Loaded ${comments.length} comments for post ${doc.id}`);
-                    } catch (commentError) {
-                        console.error('Error loading comments for post:', doc.id, commentError);
-                        postData.comments = [];
-                    }
-                    
-                    newPosts.push(postData);
-                }
-                
-                // Only update if posts have actually changed
-                const postsChanged = JSON.stringify(posts) !== JSON.stringify(newPosts);
-                if (postsChanged) {
-                    posts = newPosts;
-                    renderPosts();
-                }
-            });
-        } catch (error) {
-            console.error('Error loading posts:', error);
-        }
+        console.log('loadPosts called - this function is deprecated');
+        // This function is kept for backward compatibility but loadPostsAndComments is used instead
     };
 
     // Function to save user state to localStorage
@@ -778,78 +788,9 @@ document.addEventListener('DOMContentLoaded', () => {
         saveUserState(user);
         
         if (user) {
-            console.log('Loading user profile and posts...');
+            console.log('Loading user profile...');
             await loadUserProfile(user.uid);
-            loadPosts();
-            
-            // Set up real-time comments listener
-            const commentsQuery = query(collection(window.firebase.db, 'comments'), orderBy('timestamp', 'asc'));
-            onSnapshot(commentsQuery, (snapshot) => {
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === 'added') {
-                        const newComment = { 
-                            id: change.doc.id, 
-                            ...change.doc.data(),
-                            timestamp: change.doc.data().timestamp?.toDate ? change.doc.data().timestamp.toDate() : change.doc.data().timestamp
-                        };
-                        
-                        // Update the corresponding post's comments
-                        const post = posts.find(p => p.id === newComment.postId);
-                        if (post) {
-                            if (!post.comments) post.comments = [];
-                            // Check if comment already exists
-                            const existingComment = post.comments.find(c => c.id === newComment.id);
-                            if (!existingComment) {
-                                post.comments.push(newComment);
-                                console.log(`Added new comment ${newComment.id} to post ${newComment.postId}`);
-                                
-                                // Update UI if the post is currently visible
-                                const postCard = document.querySelector(`[data-post-id="${post.id}"]`);
-                                if (postCard) {
-                                    const commentsList = postCard.querySelector('.comments-list');
-                                    if (commentsList) {
-                                        const commentElement = document.createElement('div');
-                                        commentElement.className = 'comment';
-                                        commentElement.dataset.commentId = newComment.id;
-                                        commentElement.innerHTML = `
-                                            <div class="comment-header">
-                                                <span class="comment-author">${newComment.username}</span>
-                                                <span class="comment-time">${newComment.timestamp?.toLocaleString ? newComment.timestamp.toLocaleString('fa-IR') : ''}</span>
-                                            </div>
-                                            <div class="comment-text">${newComment.text}</div>
-                                        `;
-                                        commentsList.appendChild(commentElement);
-                                        
-                                        // Update comment count
-                                        const commentButton = postCard.querySelector('.comment-toggle-button');
-                                        commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${post.comments.length})`;
-                                    }
-                                }
-                            }
-                        }
-                    } else if (change.type === 'removed') {
-                        const removedComment = { id: change.doc.id, ...change.doc.data() };
-                        const post = posts.find(p => p.id === removedComment.postId);
-                        if (post && post.comments) {
-                            post.comments = post.comments.filter(c => c.id !== removedComment.id);
-                            console.log(`Removed comment ${removedComment.id} from post ${removedComment.postId}`);
-                            
-                            // Update UI if the post is currently visible
-                            const postCard = document.querySelector(`[data-post-id="${post.id}"]`);
-                            if (postCard) {
-                                const commentElement = postCard.querySelector(`[data-comment-id="${removedComment.id}"]`);
-                                if (commentElement) {
-                                    commentElement.remove();
-                                    
-                                    // Update comment count
-                                    const commentButton = postCard.querySelector('.comment-toggle-button');
-                                    commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${post.comments.length})`;
-                                }
-                            }
-                        }
-                    }
-                });
-            });
+            // Posts and comments are already loaded by loadPostsAndComments for all users
             
             // Test Firebase connection and comment functionality
             console.log('Testing Firebase connection...');
@@ -976,5 +917,87 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial setup
     waitForFirebase();
+    
+    // Start loading posts and comments immediately for all users
+    const startLoadingPosts = () => {
+        if (window.firebase && window.firebase.db) {
+            console.log('Starting to load posts and comments for all users...');
+            loadPostsAndComments();
+            
+            // Set up real-time comments listener for new comments
+            const commentsQuery = query(collection(window.firebase.db, 'comments'), orderBy('timestamp', 'asc'));
+            onSnapshot(commentsQuery, (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === 'added') {
+                        const newComment = { 
+                            id: change.doc.id, 
+                            ...change.doc.data(),
+                            timestamp: change.doc.data().timestamp?.toDate ? change.doc.data().timestamp.toDate() : change.doc.data().timestamp
+                        };
+                        
+                        // Update the corresponding post's comments
+                        const post = posts.find(p => p.id === newComment.postId);
+                        if (post) {
+                            if (!post.comments) post.comments = [];
+                            // Check if comment already exists
+                            const existingComment = post.comments.find(c => c.id === newComment.id);
+                            if (!existingComment) {
+                                post.comments.push(newComment);
+                                console.log(`Real-time: Added new comment ${newComment.id} to post ${newComment.postId}`);
+                                
+                                // Update UI if the post is currently visible
+                                const postCard = document.querySelector(`[data-post-id="${post.id}"]`);
+                                if (postCard) {
+                                    const commentsList = postCard.querySelector('.comments-list');
+                                    if (commentsList) {
+                                        const commentElement = document.createElement('div');
+                                        commentElement.className = 'comment';
+                                        commentElement.dataset.commentId = newComment.id;
+                                        commentElement.innerHTML = `
+                                            <div class="comment-header">
+                                                <span class="comment-author">${newComment.username}</span>
+                                                <span class="comment-time">${newComment.timestamp?.toLocaleString ? newComment.timestamp.toLocaleString('fa-IR') : ''}</span>
+                                            </div>
+                                            <div class="comment-text">${newComment.text}</div>
+                                        `;
+                                        commentsList.appendChild(commentElement);
+                                        
+                                        // Update comment count
+                                        const commentButton = postCard.querySelector('.comment-toggle-button');
+                                        commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${post.comments.length})`;
+                                    }
+                                }
+                            }
+                        }
+                    } else if (change.type === 'removed') {
+                        const removedComment = { id: change.doc.id, ...change.doc.data() };
+                        const post = posts.find(p => p.id === removedComment.postId);
+                        if (post && post.comments) {
+                            post.comments = post.comments.filter(c => c.id !== removedComment.id);
+                            console.log(`Real-time: Removed comment ${removedComment.id} from post ${removedComment.postId}`);
+                            
+                            // Update UI if the post is currently visible
+                            const postCard = document.querySelector(`[data-post-id="${post.id}"]`);
+                            if (postCard) {
+                                const commentElement = postCard.querySelector(`[data-comment-id="${removedComment.id}"]`);
+                                if (commentElement) {
+                                    commentElement.remove();
+                                    
+                                    // Update comment count
+                                    const commentButton = postCard.querySelector('.comment-toggle-button');
+                                    commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${post.comments.length})`;
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        } else {
+            console.log('Firebase not ready yet, retrying in 100ms...');
+            setTimeout(startLoadingPosts, 100);
+        }
+    };
+    
+    startLoadingPosts();
     renderPosts();
 });
