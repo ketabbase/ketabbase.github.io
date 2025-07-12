@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUser = null; // Stores current logged-in user
     let posts = []; // Stores all posts
     let userProfile = null; // Stores user profile data
+    let isLoadingPosts = true; // Track if posts are still loading
     
     // Check for saved auth state
     const savedUser = localStorage.getItem('ketabboard_user');
@@ -70,35 +71,41 @@ document.addEventListener('DOMContentLoaded', () => {
             const newPosts = [];
             for (const doc of snapshot.docs) {
                 const postData = { id: doc.id, ...doc.data() };
-                // بارگذاری کامنت‌های هر پست
-                try {
-                    const commentsQuery = query(
-                        collection(window.firebase.db, 'comments'),
-                        where('postId', '==', doc.id),
-                        orderBy('timestamp', 'asc')
-                    );
-                    const commentsSnapshot = await getDocs(commentsQuery);
-                    const comments = [];
-                    commentsSnapshot.forEach((commentDoc) => {
-                        const commentData = commentDoc.data();
-                        comments.push({
-                            id: commentDoc.id,
-                            ...commentData,
-                            timestamp: commentData.timestamp?.toDate ? commentData.timestamp.toDate() : commentData.timestamp
+                                    // بارگذاری کامنت‌های هر پست (بدون orderBy برای جلوگیری از نیاز به index)
+                    try {
+                        const commentsQuery = query(
+                            collection(window.firebase.db, 'comments'),
+                            where('postId', '==', doc.id)
+                        );
+                        const commentsSnapshot = await getDocs(commentsQuery);
+                        const comments = [];
+                        commentsSnapshot.forEach((commentDoc) => {
+                            const commentData = commentDoc.data();
+                            comments.push({
+                                id: commentDoc.id,
+                                ...commentData,
+                                timestamp: commentData.timestamp?.toDate ? commentData.timestamp.toDate() : commentData.timestamp
+                            });
                         });
-                    });
-                    postData.comments = comments;
-                    console.log(`Loaded ${comments.length} comments for post ${doc.id}`);
-                } catch (commentError) {
-                    console.error('Error loading comments for post:', doc.id, commentError);
-                    postData.comments = [];
-                }
+                        // Sort comments by timestamp in JavaScript
+                        comments.sort((a, b) => {
+                            const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+                            const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+                            return timeA - timeB;
+                        });
+                        postData.comments = comments;
+                        console.log(`Loaded ${comments.length} comments for post ${doc.id}`);
+                    } catch (commentError) {
+                        console.error('Error loading comments for post:', doc.id, commentError);
+                        postData.comments = [];
+                    }
                 newPosts.push(postData);
             }
             // فقط اگر تغییر کرده بود رندر کن
             const postsChanged = JSON.stringify(posts) !== JSON.stringify(newPosts);
             if (postsChanged) {
                 posts = newPosts;
+                isLoadingPosts = false; // Mark as loaded
                 renderPosts();
                 console.log(`Rendered ${newPosts.length} posts with comments`);
             }
@@ -270,13 +277,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userPostsList) userPostsList.innerHTML = '';
 
         if (posts.length === 0) {
-            postsList.innerHTML = `
-                <div class="no-posts">
-                    <span class="material-icons" style="font-size: 3em; color: #ccc; margin-bottom: 1rem;">book</span>
-                    <p>هنوز هیچ پستی وجود ندارد!</p>
-                    ${currentUser ? '<p>اولین پست خود را ارسال کنید.</p>' : '<p>برای ارسال پست وارد شوید.</p>'}
-                </div>
-            `;
+            // Check if we're still loading
+            if (isLoadingPosts) {
+                postsList.innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>در حال بارگذاری پست‌ها...</p>
+                    </div>
+                `;
+            } else {
+                postsList.innerHTML = `
+                    <div class="no-posts">
+                        <span class="material-icons" style="font-size: 3em; color: #ccc; margin-bottom: 1rem;">book</span>
+                        <p>هنوز هیچ پستی وجود ندارد!</p>
+                        ${currentUser ? '<p>اولین پست خود را ارسال کنید.</p>' : '<p>برای ارسال پست وارد شوید.</p>'}
+                    </div>
+                `;
+            }
             return;
         }
 
@@ -924,8 +941,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Starting to load posts and comments for all users...');
             loadPostsAndComments();
             
-            // Set up real-time comments listener for new comments
-            const commentsQuery = query(collection(window.firebase.db, 'comments'), orderBy('timestamp', 'asc'));
+            // Set up real-time comments listener for new comments (without orderBy to avoid index requirement)
+            const commentsQuery = query(collection(window.firebase.db, 'comments'));
             onSnapshot(commentsQuery, (snapshot) => {
                 snapshot.docChanges().forEach((change) => {
                     if (change.type === 'added') {
@@ -943,6 +960,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             const existingComment = post.comments.find(c => c.id === newComment.id);
                             if (!existingComment) {
                                 post.comments.push(newComment);
+                                // Sort comments by timestamp
+                                post.comments.sort((a, b) => {
+                                    const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+                                    const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+                                    return timeA - timeB;
+                                });
                                 console.log(`Real-time: Added new comment ${newComment.id} to post ${newComment.postId}`);
                                 
                                 // Update UI if the post is currently visible
