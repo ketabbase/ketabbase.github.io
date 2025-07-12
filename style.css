@@ -25,7 +25,7 @@ body {
     line-height: 1.6;
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Align to top for better scrolling */
+    align-items: flex-start;
     min-height: 100vh;
     padding: 20px 0;
 }
@@ -33,13 +33,13 @@ body {
 .app-container {
     background-color: var(--background-color-light);
     width: 100%;
-    max-width: 420px; /* Typical mobile width */
+    max-width: 420px;
     box-shadow: 0 4px 20px var(--shadow-color);
     border-radius: 12px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    min-height: 800px; /* A standard mobile height */
+    min-height: 800px;
 }
 
 header {
@@ -87,7 +87,7 @@ nav {
 main {
     flex-grow: 1;
     padding: 20px;
-    overflow-y: auto; /* Enable scrolling for main content */
+    overflow-y: auto;
     position: relative;
 }
 
@@ -132,29 +132,32 @@ main {
     border-radius: 50%;
     margin-left: 10px;
     border: 2px solid var(--secondary-color);
-    overflow: hidden;
-}
-
-.post-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    color: white;
+    font-weight: bold;
+    font-size: 1.2em;
 }
 
 .avatar-placeholder {
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    color: white;
     font-weight: bold;
     font-size: 1.2em;
 }
 
 .avatar-placeholder.large {
-    font-size: 2.5em;
+    width: 80px;
+    height: 80px;
+    font-size: 2em;
 }
 
 .post-username {
@@ -178,32 +181,8 @@ main {
     border-radius: 8px;
     margin-bottom: 10px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    float: left; /* Image floats to the left */
-    margin-left: 15px; /* Space between image and text */
-}
-
-/* When no book cover is present, adjust the layout */
-.post-content:not(:has(.book-cover)) .book-title {
-    margin-top: 0;
-}
-
-/* No posts message styling */
-.no-posts {
-    text-align: center;
-    padding: 3rem 1rem;
-    color: #666;
-    font-size: 1.1em;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 15px;
-    border: 2px dashed #dee2e6;
-    margin: 2rem 0;
-}
-
-.no-posts::before {
-    content: "📚";
-    font-size: 3em;
-    display: block;
-    margin-bottom: 1rem;
+    float: left;
+    margin-left: 15px;
 }
 
 .book-title {
@@ -227,7 +206,7 @@ main {
     border-radius: 8px;
     border-right: 4px solid var(--primary-color);
     margin: 10px 0;
-    clear: both; /* Clear float for blockquote */
+    clear: both;
 }
 
 .post-actions {
@@ -236,7 +215,7 @@ main {
     border-top: 1px solid var(--border-color);
     padding-top: 10px;
     margin-top: 10px;
-    flex-wrap: wrap; /* Allow buttons to wrap */
+    flex-wrap: wrap;
 }
 
 .action-button {
@@ -250,57 +229,25 @@ main {
     gap: 5px;
     padding: 5px 10px;
     border-radius: 5px;
-    transition: background-color 0.3s ease;
+    transition: all 0.3s ease;
 }
 
-.action-button:hover {
+.action-button:hover:not(:disabled) {
     background-color: var(--secondary-color);
 }
 
-/* Style for liked button */
+.action-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
 .action-button.like-button.liked {
     background-color: var(--primary-color);
     color: var(--text-color-light);
-    transform: scale(1.05);
-    pointer-events: none;
 }
 
 .action-button.like-button.liked .material-icons {
     color: var(--text-color-light);
-    animation: likeAnimation 0.3s ease;
-}
-
-.action-button.like-button:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-    pointer-events: none;
-}
-
-@keyframes likeAnimation {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.2); }
-    100% { transform: scale(1); }
-}
-
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-.like-success {
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-}
-
-.comments-list {
-    margin-bottom: 15px;
-    max-height: 300px;
-    overflow-y: auto;
 }
 
 .comments-section {
@@ -309,20 +256,27 @@ main {
     border-top: 1px dashed var(--border-color);
 }
 
+.comments-list {
+    margin-bottom: 10px;
+}
+
 .comment {
     background-color: #f9f9f9;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 10px;
+    padding: 8px 12px;
+    border-radius: 5px;
+    margin-bottom: 5px;
     font-size: 0.9em;
-    border-left: 3px solid var(--primary-color);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
 }
 
 .comment-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 5px;
+    gap: 8px;
+    margin-bottom: 4px;
 }
 
 .comment-author {
@@ -336,54 +290,29 @@ main {
 }
 
 .comment-text {
-    color: #333;
+    flex-grow: 1;
     line-height: 1.4;
-}
-
-.delete-comment-button {
-    background: none;
-    border: none;
-    color: #f44336;
-    cursor: pointer;
-    padding: 2px;
-    border-radius: 3px;
-    transition: background-color 0.3s ease;
-    margin-top: 5px;
-}
-
-.delete-comment-button:hover {
-    background-color: rgba(244, 67, 54, 0.1);
-}
-
-.comment-success {
-    color: #4CAF50;
-    font-size: 0.9em;
-    margin-top: 5px;
-    text-align: center;
-    padding: 5px;
-    background-color: rgba(76, 175, 80, 0.1);
-    border-radius: 5px;
 }
 
 .add-comment-form {
     display: flex;
-    margin-top: 10px;
-    gap: 5px;
+    gap: 10px;
+    align-items: center;
 }
 
 .comment-input {
     flex-grow: 1;
-    padding: 8px;
+    padding: 8px 12px;
     border: 1px solid var(--border-color);
     border-radius: 5px;
-    font-family: 'Vazirmatn', sans-serif;
+    font-family: inherit;
     font-size: 0.9em;
 }
 
 .comment-input:focus {
     outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(248, 180, 0, 0.2);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(163, 74, 46, 0.1);
 }
 
 .add-comment-form button {
@@ -393,165 +322,154 @@ main {
     padding: 8px 12px;
     border-radius: 5px;
     cursor: pointer;
+    font-size: 0.9em;
     transition: background-color 0.3s ease;
-    font-family: 'Vazirmatn', sans-serif;
 }
 
 .add-comment-form button:hover {
-    background-color: #8C3D22;
+    background-color: #8a3d25;
 }
 
-/* FAB - Floating Action Button */
 .fab {
-    background-color: var(--primary-color);
-    color: var(--text-color-light);
-    border: none;
-    border-radius: 50%;
-    width: 56px;
-    height: 56px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 2em;
     position: fixed;
     bottom: 20px;
     right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: var(--text-color-light);
+    border: none;
     cursor: pointer;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    transition: transform 0.2s ease-in-out;
-    z-index: 900; /* Below header */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5em;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    z-index: 1000;
 }
 
 .fab:hover {
-    transform: scale(1.05);
+    background-color: #8a3d25;
+    transform: scale(1.1);
 }
 
-/* Profile Screen */
 #profile-screen {
     text-align: center;
 }
 
 .profile-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 2rem;
-    border-radius: 15px;
-    margin-bottom: 20px;
-    color: white;
-    text-align: center;
-    position: relative; /* For positioning edit button */
+    margin-bottom: 30px;
+    padding: 20px;
+    background-color: var(--card-background);
+    border-radius: 10px;
+    box-shadow: 0 2px 10px var(--shadow-color);
 }
 
 .profile-picture {
-    width: 120px;
-    height: 120px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
-    border: 4px solid white;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    margin-bottom: 1rem;
-    overflow: hidden;
-}
-
-.profile-picture img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    margin: 0 auto 15px;
+    border: 3px solid var(--secondary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    color: white;
+    font-weight: bold;
+    font-size: 2em;
 }
 
 #profile-screen h2 {
-    font-size: 1.8em;
-    color: white;
-    margin-bottom: 5px;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+    font-size: 1.5em;
 }
 
 #profile-screen p {
-    color: rgba(255,255,255,0.9);
-    font-size: 0.95em;
-    margin-bottom: 5px;
+    color: #666;
+    margin-bottom: 15px;
+    line-height: 1.6;
 }
 
-/* Edit Bio Button */
 .edit-bio-button {
-    background: rgba(255,255,255,0.2);
-    border: 1px solid rgba(255,255,255,0.3);
-    color: white;
+    background-color: var(--secondary-color);
+    color: var(--primary-color);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
     cursor: pointer;
     font-size: 0.9em;
     display: flex;
     align-items: center;
     gap: 5px;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    transition: all 0.3s ease;
-    margin: 1rem auto 0 auto; /* Center the button below bio */
+    margin: 10px auto;
+    transition: background-color 0.3s ease;
 }
 
 .edit-bio-button:hover {
-    background: rgba(255,255,255,0.3);
-    transform: translateY(-2px);
+    background-color: #e0c5b0;
 }
 
 .edit-bio-button .material-icons {
-    font-size: 1.2em;
+    font-size: 1.1em;
 }
 
-/* Bio Edit Input */
 .bio-edit-input {
-    width: 90%;
-    padding: 8px;
-    margin: 10px auto;
+    width: 100%;
+    padding: 8px 12px;
     border: 1px solid var(--border-color);
     border-radius: 5px;
-    font-family: 'Vazirmatn', sans-serif;
+    font-family: inherit;
     font-size: 0.9em;
-    text-align: center; /* Center the text in the input */
-    display: block; /* Make it a block element to control width */
+    resize: vertical;
+    min-height: 60px;
 }
 
 .bio-edit-input:focus {
     outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(248, 180, 0, 0.2);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(163, 74, 46, 0.1);
 }
 
 #profile-screen h3 {
-    text-align: right;
-    margin-bottom: 15px;
     color: var(--primary-color);
+    margin-bottom: 15px;
+    font-size: 1.3em;
+    text-align: right;
     border-bottom: 2px solid var(--secondary-color);
     padding-bottom: 5px;
-    font-size: 1.3em;
 }
 
-/* Add Post Screen */
 #add-post-screen h2 {
-    text-align: center;
     color: var(--primary-color);
-    margin-bottom: 25px;
-    font-size: 1.6em;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.5em;
 }
 
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 8px;
-    font-weight: 700;
+    margin-bottom: 5px;
     color: var(--primary-color);
+    font-weight: 600;
 }
 
 .form-group input[type="text"],
 .form-group input[type="password"],
 .form-group textarea {
     width: 100%;
-    padding: 12px;
+    padding: 10px 12px;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-family: 'Vazirmatn', sans-serif;
+    border-radius: 5px;
+    font-family: inherit;
     font-size: 1em;
-    color: var(--text-color-dark);
-    background-color: var(--background-color-light);
     transition: border-color 0.3s ease;
 }
 
@@ -559,8 +477,8 @@ main {
 .form-group input[type="password"]:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(248, 180, 0, 0.2);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(163, 74, 46, 0.1);
 }
 
 .form-group textarea {
@@ -569,140 +487,129 @@ main {
 }
 
 .form-group input[type="file"] {
-    background-color: var(--secondary-color);
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px dashed var(--primary-color);
-    cursor: pointer;
     width: 100%;
+    padding: 8px 0;
+    border: 1px dashed var(--border-color);
+    border-radius: 5px;
+    background-color: #fafafa;
 }
 
 .form-group input[type="file"]::file-selector-button {
     background-color: var(--primary-color);
     color: var(--text-color-light);
     border: none;
-    padding: 8px 12px;
+    padding: 8px 16px;
     border-radius: 5px;
     cursor: pointer;
-    margin-left: 10px;
+    margin-right: 10px;
     transition: background-color 0.3s ease;
 }
 
 .form-group input[type="file"]::file-selector-button:hover {
-    background-color: #8C3D22;
+    background-color: #8a3d25;
 }
 
 .submit-button, .cancel-button {
     width: 100%;
     padding: 12px;
     border: none;
-    border-radius: 8px;
-    font-size: 1.1em;
+    border-radius: 5px;
+    font-size: 1em;
     cursor: pointer;
-    transition: all 0.3s ease;
-    font-weight: 700;
+    transition: background-color 0.3s ease;
+    margin-bottom: 10px;
 }
 
 .submit-button {
     background-color: var(--primary-color);
     color: var(--text-color-light);
-    margin-bottom: 10px;
 }
 
 .submit-button:hover {
-    background-color: #8C3D22;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    background-color: #8a3d25;
 }
 
 .cancel-button {
-    background-color: var(--border-color);
-    color: var(--text-color-dark);
+    background-color: #f0f0f0;
+    color: #666;
 }
 
 .cancel-button:hover {
-    background-color: #C0C0C0;
-    transform: translateY(-2px);
+    background-color: #e0e0e0;
 }
 
-/* Profile specific buttons */
-#change-profile-image-button,
-#logout-button {
-    margin: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 25px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-#change-profile-image-button {
-    background: #4CAF50;
-    color: white;
-}
-
-#logout-button {
-    background: #f44336;
-    color: white;
-}
-
-#change-profile-image-button:hover,
-#logout-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-}
-
-/* Login Screen */
 #login-screen h2 {
-    text-align: center;
     color: var(--primary-color);
-    margin-bottom: 25px;
-    font-size: 1.6em;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.5em;
 }
 
-/* Admin Specific Styles */
 .delete-post-button, .delete-comment-button {
-    background-color: #D32F2F; /* Red for delete */
-    color: var(--text-color-light);
-    margin-right: auto; /* Push to the left */
-    padding: 5px 8px;
-    font-size: 0.9em;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8em;
+    transition: background-color 0.3s ease;
 }
 
 .delete-post-button:hover, .delete-comment-button:hover {
-    background-color: #B71C1C;
+    background-color: #c82333;
 }
 
 .delete-comment-button {
-    margin-right: 0; /* Align to the right in comment */
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    border-radius: 50%;
-    justify-content: center;
-    align-items: center;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 2px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.7em;
+    margin-right: 5px;
+    transition: background-color 0.3s ease;
 }
 
-/* Material Icons Font */
 .material-icons {
     font-family: 'Material Icons';
     font-weight: normal;
     font-style: normal;
-    font-size: 24px; /* Preferred icon size */
-    display: inline-block;
+    font-size: 24px;
     line-height: 1;
-    text-transform: none;
     letter-spacing: normal;
-    word-wrap: normal;
+    text-transform: none;
+    display: inline-block;
     white-space: nowrap;
+    word-wrap: normal;
     direction: ltr;
-    /* Support for all WebKit browsers. */
+    -webkit-font-feature-settings: 'liga';
     -webkit-font-smoothing: antialiased;
-    /* Support for Safari and Chrome. */
-    text-rendering: optimizeLegibility;
-    /* Support for Firefox. */
-    -moz-osx-font-smoothing: grayscale;
-    /* Support for IE. */
-    font-feature-settings: 'liga';
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+    .app-container {
+        max-width: 100%;
+        border-radius: 0;
+        min-height: 100vh;
+    }
+    
+    body {
+        padding: 0;
+    }
+    
+    main {
+        padding: 15px;
+    }
+    
+    .post-actions {
+        gap: 10px;
+    }
+    
+    .action-button {
+        font-size: 0.9em;
+        padding: 4px 8px;
+    }
 }

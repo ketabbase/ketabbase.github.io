@@ -141,6 +141,12 @@ main {
     font-size: 1.1em;
 }
 
+.post-role {
+    font-size: 0.8em;
+    color: #888;
+    margin-right: 8px;
+}
+
 .post-content {
     margin-bottom: 15px;
 }
@@ -184,6 +190,7 @@ main {
     border-top: 1px solid var(--border-color);
     padding-top: 10px;
     margin-top: 10px;
+    flex-wrap: wrap; /* Allow buttons to wrap */
 }
 
 .action-button {
@@ -204,6 +211,16 @@ main {
     background-color: var(--secondary-color);
 }
 
+/* Style for liked button */
+.action-button.like-button.liked {
+    background-color: var(--primary-color);
+    color: var(--text-color-light);
+}
+
+.action-button.like-button.liked .material-icons {
+    color: var(--text-color-light); /* Ensure icon color changes too */
+}
+
 .comments-section {
     margin-top: 10px;
     padding-top: 10px;
@@ -216,12 +233,55 @@ main {
     border-radius: 5px;
     margin-bottom: 5px;
     font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .comment-author {
     font-weight: 700;
     color: var(--primary-color);
     margin-left: 5px;
+}
+
+.comment-text {
+    flex-grow: 1;
+}
+
+.add-comment-form {
+    display: flex;
+    margin-top: 10px;
+    gap: 5px;
+}
+
+.comment-input {
+    flex-grow: 1;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    font-family: 'Vazirmatn', sans-serif;
+    font-size: 0.9em;
+}
+
+.comment-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(248, 180, 0, 0.2);
+}
+
+.add-comment-form button {
+    background-color: var(--primary-color);
+    color: var(--text-color-light);
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-family: 'Vazirmatn', sans-serif;
+}
+
+.add-comment-form button:hover {
+    background-color: #8C3D22;
 }
 
 /* FAB - Floating Action Button */
@@ -260,6 +320,7 @@ main {
     border-radius: 10px;
     margin-bottom: 20px;
     box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+    position: relative; /* For positioning edit button */
 }
 
 .profile-picture {
@@ -280,6 +341,50 @@ main {
 #profile-screen p {
     color: #666;
     font-size: 0.95em;
+    margin-bottom: 5px;
+}
+
+/* Edit Bio Button */
+.edit-bio-button {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+    margin: 10px auto 0 auto; /* Center the button below bio */
+}
+
+.edit-bio-button:hover {
+    background-color: var(--secondary-color);
+}
+
+.edit-bio-button .material-icons {
+    font-size: 1.2em;
+}
+
+/* Bio Edit Input */
+.bio-edit-input {
+    width: 90%;
+    padding: 8px;
+    margin: 10px auto;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    font-family: 'Vazirmatn', sans-serif;
+    font-size: 0.9em;
+    text-align: center; /* Center the text in the input */
+    display: block; /* Make it a block element to control width */
+}
+
+.bio-edit-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(248, 180, 0, 0.2);
 }
 
 #profile-screen h3 {
@@ -289,10 +394,6 @@ main {
     border-bottom: 2px solid var(--secondary-color);
     padding-bottom: 5px;
     font-size: 1.3em;
-}
-
-.user-posts-list .post-card {
-    /* Adjustments for profile screen posts if needed */
 }
 
 /* Add Post Screen */
@@ -315,6 +416,7 @@ main {
 }
 
 .form-group input[type="text"],
+.form-group input[type="password"],
 .form-group textarea {
     width: 100%;
     padding: 12px;
@@ -328,6 +430,7 @@ main {
 }
 
 .form-group input[type="text"]:focus,
+.form-group input[type="password"]:focus,
 .form-group textarea:focus {
     outline: none;
     border-color: var(--accent-color);
@@ -393,6 +496,37 @@ main {
     background-color: #C0C0C0;
 }
 
+/* Login Screen */
+#login-screen h2 {
+    text-align: center;
+    color: var(--primary-color);
+    margin-bottom: 25px;
+    font-size: 1.6em;
+}
+
+/* Admin Specific Styles */
+.delete-post-button, .delete-comment-button {
+    background-color: #D32F2F; /* Red for delete */
+    color: var(--text-color-light);
+    margin-right: auto; /* Push to the left */
+    padding: 5px 8px;
+    font-size: 0.9em;
+}
+
+.delete-post-button:hover, .delete-comment-button:hover {
+    background-color: #B71C1C;
+}
+
+.delete-comment-button {
+    margin-right: 0; /* Align to the right in comment */
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 50%;
+    justify-content: center;
+    align-items: center;
+}
+
 /* Material Icons Font */
 .material-icons {
     font-family: 'Material Icons';
@@ -415,4 +549,3 @@ main {
     /* Support for IE. */
     font-feature-settings: 'liga';
 }
-
