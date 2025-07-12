@@ -126,6 +126,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
             
+            // Store current comment section states before updating
+            const commentSectionStates = {};
+            posts.forEach(post => {
+                const postCard = document.querySelector(`[data-post-id="${post.id}"]`);
+                if (postCard) {
+                    const commentsSection = postCard.querySelector('.comments-section');
+                    if (commentsSection) {
+                        commentSectionStates[post.id] = commentsSection.style.display !== 'none';
+                    }
+                }
+            });
+            
             // Update posts with comments
             posts.forEach(post => {
                 post.comments = commentsByPost[post.id] || [];
@@ -133,6 +145,20 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Re-render posts to show updated comments
             renderPosts();
+            
+            // Restore comment section states after re-render
+            setTimeout(() => {
+                Object.keys(commentSectionStates).forEach(postId => {
+                    const postCard = document.querySelector(`[data-post-id="${postId}"]`);
+                    if (postCard && commentSectionStates[postId]) {
+                        const commentsSection = postCard.querySelector('.comments-section');
+                        if (commentsSection) {
+                            commentsSection.style.display = 'block';
+                        }
+                    }
+                });
+            }, 100);
+            
             console.log(`Updated comments for all posts`);
         });
     };
@@ -355,6 +381,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const renderPosts = () => {
+        // Store current comment section states before clearing
+        const commentSectionStates = {};
+        posts.forEach(post => {
+            const postCard = document.querySelector(`[data-post-id="${post.id}"]`);
+            if (postCard) {
+                const commentsSection = postCard.querySelector('.comments-section');
+                if (commentsSection) {
+                    commentSectionStates[post.id] = commentsSection.style.display !== 'none';
+                }
+            }
+        });
+
         // Clear existing posts
         postsList.innerHTML = '';
         const userPostsList = document.querySelector('#profile-screen .user-posts-list');
@@ -408,6 +446,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
         }
+
+        // Restore comment section states after rendering
+        setTimeout(() => {
+            Object.keys(commentSectionStates).forEach(postId => {
+                const postCard = document.querySelector(`[data-post-id="${postId}"]`);
+                if (postCard && commentSectionStates[postId]) {
+                    const commentsSection = postCard.querySelector('.comments-section');
+                    if (commentsSection) {
+                        commentsSection.style.display = 'block';
+                    }
+                }
+            });
+        }, 50);
 
         updateAdminControls();
     };
