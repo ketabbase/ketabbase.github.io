@@ -199,6 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const renderPosts = () => {
+        // Clear existing posts
         postsList.innerHTML = '';
         const userPostsList = document.querySelector('#profile-screen .user-posts-list');
         if (userPostsList) userPostsList.innerHTML = '';
@@ -214,13 +215,20 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        posts.forEach(post => {
-            const newPostCard = createPostCard(post);
-            postsList.appendChild(newPostCard);
+        // Create a Set to track processed posts to avoid duplicates
+        const processedPosts = new Set();
 
-            if (currentUser && post.userId === currentUser.uid) {
-                const userPostCard = createPostCard(post, true);
-                if (userPostsList) userPostsList.appendChild(userPostCard);
+        posts.forEach(post => {
+            if (!processedPosts.has(post.id)) {
+                processedPosts.add(post.id);
+                
+                const newPostCard = createPostCard(post);
+                postsList.appendChild(newPostCard);
+
+                if (currentUser && post.userId === currentUser.uid) {
+                    const userPostCard = createPostCard(post, true);
+                    if (userPostsList) userPostsList.appendChild(userPostCard);
+                }
             }
         });
 
@@ -339,52 +347,62 @@ document.addEventListener('DOMContentLoaded', () => {
         const likedBy = post.likedBy || [];
         const userLiked = likedBy.includes(currentUser.uid);
 
+        // Optimistic UI update - update immediately for better UX
+        let newLikes, newLikedBy;
+
+        if (userLiked) {
+            // Unlike - remove user from likedBy and decrease likes
+            newLikes = (post.likes || 0) - 1;
+            newLikedBy = likedBy.filter(uid => uid !== currentUser.uid);
+            
+            // Update UI immediately - remove liked state
+            e.currentTarget.classList.remove('liked');
+            e.currentTarget.style.opacity = '1';
+            e.currentTarget.style.cursor = 'pointer';
+        } else {
+            // Like - add user to likedBy and increase likes
+            newLikes = (post.likes || 0) + 1;
+            newLikedBy = [...likedBy, currentUser.uid];
+            
+            // Update UI immediately - add liked state
+            e.currentTarget.classList.add('liked');
+            e.currentTarget.style.opacity = '1';
+            e.currentTarget.style.cursor = 'pointer';
+        }
+
+        // Update local state immediately
+        post.likes = newLikes;
+        post.likedBy = newLikedBy;
+
+        // Update like count immediately
+        e.currentTarget.querySelector('.like-count').textContent = newLikes;
+        
+        // Add a quick animation
+        e.currentTarget.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+            e.currentTarget.style.transform = 'scale(1)';
+        }, 150);
+
+        // Update Firebase in background
         try {
             const postRef = doc(window.firebase.db, 'posts', postId);
-            let newLikes, newLikedBy;
-
-            if (userLiked) {
-                // Unlike - remove user from likedBy and decrease likes
-                newLikes = (post.likes || 0) - 1;
-                newLikedBy = likedBy.filter(uid => uid !== currentUser.uid);
-                
-                // Update UI - remove liked state
-                e.currentTarget.classList.remove('liked');
-                e.currentTarget.disabled = false;
-                e.currentTarget.style.opacity = '1';
-                e.currentTarget.style.cursor = 'pointer';
-            } else {
-                // Like - add user to likedBy and increase likes
-                newLikes = (post.likes || 0) + 1;
-                newLikedBy = [...likedBy, currentUser.uid];
-                
-                // Update UI - add liked state
-                e.currentTarget.classList.add('liked');
-                e.currentTarget.disabled = false;
-                e.currentTarget.style.opacity = '1';
-                e.currentTarget.style.cursor = 'pointer';
-            }
-
             await updateDoc(postRef, { 
                 likes: newLikes,
                 likedBy: newLikedBy
             });
-
-            // Update local state
-            post.likes = newLikes;
-            post.likedBy = newLikedBy;
-
-            // Update like count
-            e.currentTarget.querySelector('.like-count').textContent = newLikes;
-            
-            // Add a quick animation
-            e.currentTarget.style.transform = 'scale(1.1)';
-            setTimeout(() => {
-                e.currentTarget.style.transform = 'scale(1)';
-            }, 150);
-
         } catch (error) {
             console.error('Error liking/unliking post:', error);
+            // Revert UI changes if Firebase update fails
+            if (userLiked) {
+                e.currentTarget.classList.add('liked');
+                post.likes = (post.likes || 0) + 1;
+                post.likedBy = [...newLikedBy, currentUser.uid];
+            } else {
+                e.currentTarget.classList.remove('liked');
+                post.likes = (post.likes || 0) - 1;
+                post.likedBy = newLikedBy.filter(uid => uid !== currentUser.uid);
+            }
+            e.currentTarget.querySelector('.like-count').textContent = post.likes;
         }
     };
 
@@ -591,7 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const q = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
             
             onSnapshot(q, async (snapshot) => {
-                posts = [];
+                const newPosts = [];
                 
                 for (const doc of snapshot.docs) {
                     const postData = { id: doc.id, ...doc.data() };
@@ -616,10 +634,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         postData.comments = [];
                     }
                     
-                    posts.push(postData);
+                    newPosts.push(postData);
                 }
                 
-                renderPosts();
+                // Only update if posts have actually changed
+                const postsChanged = JSON.stringify(posts) !== JSON.stringify(newPosts);
+                if (postsChanged) {
+                    posts = newPosts;
+                    renderPosts();
+                }
             });
         } catch (error) {
             console.error('Error loading posts:', error);
