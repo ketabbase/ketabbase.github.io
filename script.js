@@ -236,20 +236,43 @@ document.addEventListener('DOMContentLoaded', () => {
         const bookQuote = document.getElementById('book-quote').value;
         const bookCoverFile = document.getElementById('book-cover-upload').files[0];
 
+        // Show loading state
+        const submitButton = newPostForm.querySelector('button[type="submit"]');
+        const originalButtonText = submitButton.textContent;
+        submitButton.textContent = 'در حال ارسال...';
+        submitButton.disabled = true;
+
         try {
             let bookCoverURL = '';
             
             if (bookCoverFile) {
+                // Check file size (max 5MB)
+                const maxSize = 5 * 1024 * 1024; // 5MB
+                if (bookCoverFile.size > maxSize) {
+                    alert('حجم تصویر نباید بیشتر از 5 مگابایت باشد.');
+                    return;
+                }
+                
                 try {
-                    // Try Firebase Storage first
+                    // Try Firebase Storage with timeout
                     const storageRef = ref(window.firebase.storage, `book-covers/${Date.now()}_${bookCoverFile.name}`);
-                    const snapshot = await uploadBytes(storageRef, bookCoverFile);
+                    
+                    // Add timeout to upload
+                    const uploadPromise = uploadBytes(storageRef, bookCoverFile);
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Upload timeout')), 10000)
+                    );
+                    
+                    const snapshot = await Promise.race([uploadPromise, timeoutPromise]);
                     bookCoverURL = await getDownloadURL(snapshot.ref);
+                    console.log('Image uploaded successfully to Firebase Storage');
+                    
                 } catch (storageError) {
                     console.error('Error uploading image to Firebase Storage:', storageError);
                     
                     // Fallback: Convert to base64 and store in Firestore
                     try {
+                        console.log('Converting image to base64 as fallback...');
                         const reader = new FileReader();
                         const base64Promise = new Promise((resolve, reject) => {
                             reader.onload = () => resolve(reader.result);
@@ -257,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         reader.readAsDataURL(bookCoverFile);
                         bookCoverURL = await base64Promise;
-                        console.log('Image converted to base64 as fallback');
+                        console.log('Image converted to base64 successfully');
                     } catch (base64Error) {
                         console.error('Error converting image to base64:', base64Error);
                         alert('خطا در پردازش تصویر. لطفاً بدون تصویر پست را ارسال کنید.');
@@ -290,6 +313,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error creating post:', error);
             alert('خطا در ایجاد پست');
+        } finally {
+            // Reset loading state
+            submitButton.textContent = originalButtonText;
+            submitButton.disabled = false;
         }
     });
 
@@ -566,9 +593,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!commentText) return;
 
-        // Clear input first
-        commentInput.value = '';
-
         // Optimistic UI update - add comment immediately to local state
         const post = posts.find(p => p.id === postId);
         if (post) {
@@ -705,6 +729,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
+            // Clear input after successful save
+            commentInput.value = '';
+            
             // Add animation
             const commentButton = e.target.closest('.post-card').querySelector('.comment-toggle-button');
             commentButton.style.transform = 'scale(1.1)';
@@ -714,7 +741,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
         } catch (error) {
             console.error('Error adding comment:', error);
-            alert('خطا در افزودن کامنت: ' + error.message);
+            
             // Put the text back in the input if it failed
             commentInput.value = commentText;
             
@@ -734,6 +761,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     const commentButton = postCard.querySelector('.comment-toggle-button');
                     commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${post.comments.length})`;
                 }
+            }
+            
+            // Show user-friendly error message
+            if (error.code === 'permission-denied') {
+                alert('شما دسترسی ارسال کامنت را ندارید.');
+            } else if (error.code === 'unavailable') {
+                alert('خطا در اتصال به سرور. لطفاً دوباره تلاش کنید.');
+            } else {
+                alert('خطا در افزودن کامنت. لطفاً دوباره تلاش کنید.');
             }
         }
     };
