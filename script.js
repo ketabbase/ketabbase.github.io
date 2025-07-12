@@ -159,11 +159,14 @@ function setupEventListeners() {
 }
 
 function setupAuthStateListener() {
+    console.log('Setting up auth state listener...');
     onAuthStateChanged(window.firebase.auth, (user) => {
+        console.log('Auth state changed:', user ? 'User logged in' : 'User logged out');
         currentUser = user;
         updateUIForAuthState(user);
         
         if (user) {
+            console.log('Loading user data for:', user.email);
             loadUserProfile(user);
             loadPosts();
             loadUserPosts();
@@ -210,18 +213,23 @@ async function handleAuth(e) {
     const password = document.getElementById('password').value;
     const isRegistering = e.target.querySelector('button[type="submit"]').textContent === 'ثبت نام';
     
+    console.log('Attempting auth:', isRegistering ? 'register' : 'login', 'for username:', username);
+    
     try {
         if (isRegistering) {
             // Register new user
+            console.log('Creating user with email:', username + '@ketabgard.com');
             const userCredential = await createUserWithEmailAndPassword(
                 window.firebase.auth, 
                 username + '@ketabgard.com', 
                 password
             );
             
+            console.log('User created successfully:', userCredential.user.uid);
             await updateProfile(userCredential.user, { displayName: username });
             
             // Create user document in Firestore
+            console.log('Creating user document in Firestore...');
             await addDoc(collection(window.firebase.db, 'users'), {
                 uid: userCredential.user.uid,
                 username: username,
@@ -234,6 +242,7 @@ async function handleAuth(e) {
             alert('حساب کاربری با موفقیت ایجاد شد!');
         } else {
             // Sign in existing user
+            console.log('Signing in user with email:', username + '@ketabgard.com');
             await signInWithEmailAndPassword(
                 window.firebase.auth, 
                 username + '@ketabgard.com', 
@@ -249,7 +258,9 @@ async function handleAuth(e) {
         document.querySelector('[data-target="feed-screen"]').classList.add('active');
         
     } catch (error) {
-        console.error('Auth error:', error);
+        console.error('Auth error details:', error);
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
         alert('خطا: ' + getPersianErrorMessage(error.code));
     }
 }
@@ -329,15 +340,21 @@ async function handleNewPost(e) {
 }
 
 async function loadPosts() {
+    console.log('Loading posts...');
     try {
         const q = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
+        console.log('Query created, setting up snapshot listener...');
         
         onSnapshot(q, (snapshot) => {
+            console.log('Posts snapshot received, documents count:', snapshot.size);
             posts = [];
             snapshot.forEach((doc) => {
                 posts.push({ id: doc.id, ...doc.data() });
             });
+            console.log('Posts loaded:', posts.length);
             renderPosts();
+        }, (error) => {
+            console.error('Error in posts snapshot:', error);
         });
     } catch (error) {
         console.error('Error loading posts:', error);
