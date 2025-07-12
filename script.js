@@ -428,7 +428,7 @@ function renderPosts() {
                 <span class="post-role">(${post.userRole})</span>
             </div>
             <div class="post-content">
-                <img src="${post.bookCoverURL || 'book_cover_example.png'}" alt="Book Cover" class="book-cover">
+                ${post.bookCoverURL ? `<img src="${post.bookCoverURL}" alt="Book Cover" class="book-cover">` : ''}
                 <h3 class="book-title">${post.bookTitle}</h3>
                 <p class="book-author">نویسنده: ${post.bookAuthor}</p>
                 <blockquote class="book-quote">"${post.bookQuote}"</blockquote>
@@ -467,7 +467,7 @@ function renderUserPosts() {
     userPostsList.innerHTML = userPosts.map(post => `
         <div class="post-card" data-post-id="${post.id}">
             <div class="post-content">
-                <img src="${post.bookCoverURL || 'book_cover_example_2.png'}" alt="Book Cover" class="book-cover">
+                ${post.bookCoverURL ? `<img src="${post.bookCoverURL}" alt="Book Cover" class="book-cover">` : ''}
                 <h3 class="book-title">${post.bookTitle}</h3>
                 <p class="book-author">نویسنده: ${post.bookAuthor}</p>
                 <blockquote class="book-quote">"${post.bookQuote}"</blockquote>

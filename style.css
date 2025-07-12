@@ -160,6 +160,11 @@ main {
     margin-left: 15px; /* Space between image and text */
 }
 
+/* When no book cover is present, adjust the layout */
+.post-content:not(:has(.book-cover)) .book-title {
+    margin-top: 0;
+}
+
 .book-title {
     font-size: 1.4em;
     color: var(--primary-color);
