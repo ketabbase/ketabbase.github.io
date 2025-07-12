@@ -430,7 +430,7 @@ function renderPosts() {
     if (!postsList) return;
     
     if (posts.length === 0) {
-        postsList.innerHTML = '<div class="no-posts">هیچ پستی وجود ندارد.</div>';
+        postsList.innerHTML = '<div class="no-posts">هنوز هیچ پستی منتشر نشده است. اولین پست خود را ایجاد کنید!</div>';
         return;
     }
     
@@ -479,7 +479,7 @@ function renderUserPosts() {
     if (!userPostsList) return;
     
     if (userPosts.length === 0) {
-        userPostsList.innerHTML = '<div class="no-posts">شما هنوز پستی ثبت نکرده‌اید.</div>';
+        userPostsList.innerHTML = '<div class="no-posts">شما هنوز پستی ثبت نکرده‌اید. روی دکمه + کلیک کنید تا اولین پست خود را ایجاد کنید!</div>';
         return;
     }
     

@@ -187,6 +187,25 @@ main {
     margin-top: 0;
 }
 
+/* No posts message styling */
+.no-posts {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #666;
+    font-size: 1.1em;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 15px;
+    border: 2px dashed #dee2e6;
+    margin: 2rem 0;
+}
+
+.no-posts::before {
+    content: "📚";
+    font-size: 3em;
+    display: block;
+    margin-bottom: 1rem;
+}
+
 .book-title {
     font-size: 1.4em;
     color: var(--primary-color);
