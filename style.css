@@ -554,6 +554,9 @@ main {
     cursor: pointer;
     font-size: 0.8em;
     transition: background-color 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .delete-post-button:hover, .delete-comment-button:hover {
@@ -570,6 +573,13 @@ main {
     font-size: 0.7em;
     margin-right: 5px;
     transition: background-color 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.delete-comment-button .material-icons {
+    font-size: 14px;
 }
 
 .material-icons {

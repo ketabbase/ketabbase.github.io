@@ -171,7 +171,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Function to update admin controls
     const updateAdminControls = () => {
         const adminElements = document.querySelectorAll('.admin-only');
-        if (currentUser && userProfile?.role === 'admin') {
+        const isAdmin = currentUser && (currentUser.email === 'ketabbase@ketabgard.com' || userProfile?.role === 'admin');
+        
+        if (isAdmin) {
             adminElements.forEach(el => el.style.display = 'inline-flex');
         } else {
             adminElements.forEach(el => el.style.display = 'none');
@@ -370,8 +372,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="action-button comment-toggle-button">
                     <span class="material-icons">comment</span> کامنت (${post.comments ? post.comments.length : 0})
                 </button>
-                ${currentUser && (userProfile?.role === 'admin' || post.userId === currentUser.uid) ? 
-                    `<button class="action-button delete-post-button admin-only" style="display: none;">
+                ${currentUser && (currentUser.email === 'ketabbase@ketabgard.com' || userProfile?.role === 'admin' || post.userId === currentUser.uid) ? 
+                    `<button class="action-button delete-post-button">
                         <span class="material-icons">delete</span> حذف
                     </button>` : ''
                 }
@@ -385,8 +387,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span class="comment-time">${comment.timestamp ? (comment.timestamp.toDate ? comment.timestamp.toDate().toLocaleString('fa-IR') : comment.timestamp.toLocaleString('fa-IR')) : ''}</span>
                             </div>
                             <div class="comment-text">${comment.text}</div>
-                            ${currentUser && (userProfile?.role === 'admin' || comment.userId === currentUser.uid) ? 
-                                `<button class="delete-comment-button admin-only" style="display: none;">
+                            ${currentUser && (currentUser.email === 'ketabbase@ketabgard.com' || userProfile?.role === 'admin' || comment.userId === currentUser.uid) ? 
+                                `<button class="delete-comment-button">
                                     <span class="material-icons">close</span>
                                 </button>` : ''
                             }
@@ -604,14 +606,40 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const deletePost = async (postId) => {
-        if (!currentUser || (userProfile?.role !== 'admin' && posts.find(p => p.id === postId)?.userId !== currentUser.uid)) {
-            alert('شما دسترسی حذف پست را ندارید.');
+        if (!currentUser) {
+            alert('برای حذف پست باید وارد شوید.');
             return;
         }
         
-        if (confirm('آیا مطمئن هستید که می‌خواهید این پست را حذف کنید؟')) {
+        const post = posts.find(p => p.id === postId);
+        if (!post) {
+            alert('پست یافت نشد.');
+            return;
+        }
+        
+        // Check if user is admin (ketabbase user) or post author
+        const isAdmin = currentUser.email === 'ketabbase@ketabgard.com' || userProfile?.role === 'admin';
+        const isPostAuthor = post.userId === currentUser.uid;
+        
+        if (!isAdmin && !isPostAuthor) {
+            alert('شما دسترسی حذف این پست را ندارید.');
+            return;
+        }
+        
+        if (confirm('آیا مطمئن هستید که می‌خواهید این پست را حذف کنید؟\n\nاین عمل غیرقابل بازگشت است و تمام کامنت‌های مربوطه نیز حذف خواهند شد.')) {
             try {
-                            await deleteDoc(doc(window.firebase.db, 'posts', postId));
+                // First, delete all comments for this post
+                if (post.comments && post.comments.length > 0) {
+                    console.log(`Deleting ${post.comments.length} comments for post ${postId}`);
+                    const deletePromises = post.comments.map(comment => 
+                        deleteDoc(doc(window.firebase.db, 'comments', comment.id))
+                    );
+                    await Promise.all(deletePromises);
+                }
+                
+                // Then delete the post
+                await deleteDoc(doc(window.firebase.db, 'posts', postId));
+                console.log(`Post ${postId} deleted successfully by ${isAdmin ? 'admin' : 'author'}`);
             } catch (error) {
                 console.error('Error deleting post:', error);
                 alert('خطا در حذف پست');
@@ -634,8 +662,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // Allow deletion if user is admin or comment author
-        if (userProfile?.role !== 'admin' && comment.userId !== currentUser.uid) {
+        // Check if user is admin (ketabbase user) or comment author
+        const isAdmin = currentUser.email === 'ketabbase@ketabgard.com' || userProfile?.role === 'admin';
+        const isCommentAuthor = comment.userId === currentUser.uid;
+        
+        if (!isAdmin && !isCommentAuthor) {
             alert('شما دسترسی حذف این کامنت را ندارید.');
             return;
         }
@@ -643,7 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (confirm('آیا مطمئن هستید که می‌خواهید این کامنت را حذف کنید؟')) {
             try {
                 await deleteDoc(doc(window.firebase.db, 'comments', commentId));
-                console.log(`Comment ${commentId} deleted successfully`);
+                console.log(`Comment ${commentId} deleted successfully by ${isAdmin ? 'admin' : 'author'}`);
             } catch (error) {
                 console.error('Error deleting comment:', error);
                 alert('خطا در حذف کامنت');
@@ -758,6 +789,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load user profile
     const loadUserProfile = async (uid) => {
         try {
+            // Check if user is admin (ketabbase)
+            if (currentUser && currentUser.email === 'ketabbase@ketabgard.com') {
+                userProfile = { 
+                    role: 'admin', 
+                    bio: 'مدیر سیستم کتاب‌گرد',
+                    username: 'ketabbase'
+                };
+                console.log('Admin user detected: ketabbase');
+                return;
+            }
+            
             const usersRef = collection(window.firebase.db, 'users');
             const q = query(usersRef, where('uid', '==', uid));
             const snapshot = await getDocs(q);
