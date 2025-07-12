@@ -1,0 +1,142 @@
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>کتاب بورد</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>کتاب بورد</h1>
+            <nav>
+                <button class="nav-button active" data-target="feed-screen"><span class="material-icons">home</span></button>
+                <button class="nav-button" data-target="profile-screen"><span class="material-icons">person</span></button>
+                <button class="nav-button" data-target="login-screen" id="login-nav-button"><span class="material-icons">login</span></button>
+            </nav>
+        </header>
+
+        <main>
+            <section id="feed-screen" class="screen active">
+                <div class="posts-list">
+                    <!-- Example Post -->
+                    <div class="post-card" data-post-id="1">
+                        <div class="post-header">
+                            <img src="avatar.png" alt="User Avatar" class="post-avatar">
+                            <span class="post-username">کاربر کتاب‌دوست</span>
+                            <span class="post-role">(کاربر)</span>
+                        </div>
+                        <div class="post-content">
+                            <img src="book_cover_example.png" alt="Book Cover" class="book-cover">
+                            <h3 class="book-title">چهار اثر از فلورانس اسکاول شین</h3>
+                            <p class="book-author">نویسنده: فلورانس اسکاول شین</p>
+                            <blockquote class="book-quote">"همواره به یاد داشته باشید که هر چه را که به جهان هستی می‌دهید، به سوی شما باز می‌گردد."</blockquote>
+                        </div>
+                        <div class="post-actions">
+                            <button class="action-button like-button"><span class="material-icons">thumb_up</span> لایک (<span class="like-count">0</span>)</button>
+                            <button class="action-button comment-toggle-button"><span class="material-icons">comment</span> کامنت</button>
+                            <button class="action-button delete-post-button admin-only" style="display: none;"><span class="material-icons">delete</span> حذف</button>
+                        </div>
+                        <div class="comments-section" style="display: none;">
+                            <div class="comment">
+                                <span class="comment-author">کتاب‌خوان حرفه‌ای:</span> <span class="comment-text">کتاب فوق‌العاده‌ای بود!</span>
+                                <button class="delete-comment-button admin-only" style="display: none;"><span class="material-icons">close</span></button>
+                            </div>
+                            <form class="add-comment-form">
+                                <input type="text" placeholder="نظر خود را بنویسید..." class="comment-input">
+                                <button type="submit">ارسال</button>
+                            </form>
+                        </div>
+                    </div>
+                    <!-- End Example Post -->
+                </div>
+                <button id="add-post-button" class="fab"><span class="material-icons">add</span></button>
+            </section>
+
+            <section id="profile-screen" class="screen">
+                <div class="profile-header">
+                    <img src="avatar.png" alt="Profile Picture" class="profile-picture">
+                    <h2 id="profile-username">کاربر کتاب‌گرد</h2>
+                    <p id="profile-bio">علاقه‌مند به ادبیات کلاسیک و فلسفه</p>
+                    <button class="edit-bio-button"><span class="material-icons">edit</span> ویرایش بیو</button>
+                    <p>نقش: <span id="profile-role">کاربر</span></p>
+                    <input type="file" id="profile-image-upload-profile" accept="image/*" style="display:none">
+                    <button class="submit-button" id="change-profile-image-button">تغییر عکس پروفایل</button>
+                    <button class="submit-button" id="logout-button">خروج از حساب</button>
+                </div>
+                <h3>پست‌های من</h3>
+                <div class="user-posts-list posts-list">
+                    <!-- Example User Post -->
+                    <div class="post-card" data-post-id="2">
+                        <div class="post-content">
+                            <img src="book_cover_example_2.png" alt="Book Cover" class="book-cover">
+                            <h3 class="book-title">کیمیاگر</h3>
+                            <p class="book-author">نویسنده: پائولو کوئلیو</p>
+                            <blockquote class="book-quote">"وقتی آرزوئی داری، تمام کائنات همواره با تو دست به یکی می‌شوند تا آن را برآورده کنی."</blockquote>
+                        </div>
+                        <div class="post-actions">
+                            <button class="action-button like-button"><span class="material-icons">thumb_up</span> لایک (<span class="like-count">0</span>)</button>
+                            <button class="action-button comment-toggle-button"><span class="material-icons">comment</span> کامنت</button>
+                            <button class="action-button delete-post-button admin-only" style="display: none;"><span class="material-icons">delete</span> حذف</button>
+                        </div>
+                        <div class="comments-section" style="display: none;">
+                            <form class="add-comment-form">
+                                <input type="text" placeholder="نظر خود را بنویسید..." class="comment-input">
+                                <button type="submit">ارسال</button>
+                            </form>
+                        </div>
+                    </div>
+                    <!-- End Example User Post -->
+                </div>
+            </section>
+
+            <section id="add-post-screen" class="screen">
+                <h2>افزودن پست جدید</h2>
+                <form id="new-post-form">
+                    <div class="form-group">
+                        <label for="book-title">عنوان کتاب:</label>
+                        <input type="text" id="book-title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="book-author">نام نویسنده:</label>
+                        <input type="text" id="book-author" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="book-quote">جمله یا نقل‌قول کوتاه:</label>
+                        <textarea id="book-quote" rows="4" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="book-cover-upload">عکس جلد (اختیاری):</label>
+                        <input type="file" id="book-cover-upload" accept="image/*">
+                        <img id="book-cover-preview" src="#" alt="Book Cover Preview" style="display: none; max-width: 100px; margin-top: 10px;">
+                    </div>
+                    <button type="submit" class="submit-button">ارسال پست</button>
+                    <button type="button" class="cancel-button" id="cancel-post-button">انصراف</button>
+                </form>
+            </section>
+
+            <section id="login-screen" class="screen">
+                <h2>ورود / ثبت نام</h2>
+                <form id="auth-form">
+                    <div class="form-group">
+                        <label for="username">نام کاربری:</label>
+                        <input type="text" id="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">رمز عبور:</label>
+                        <input type="password" id="password" required>
+                    </div>
+                    <button type="submit" class="submit-button">ورود</button>
+                    <button type="button" class="cancel-button" id="register-button">ثبت نام</button>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
