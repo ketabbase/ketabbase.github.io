@@ -39,11 +39,15 @@
             <section id="profile-screen" class="screen">
                 <div class="profile-header">
                     <div class="profile-picture">
-                        <div class="avatar-placeholder">U</div>
+                        <div class="avatar-placeholder" id="profile-avatar">U</div>
+                        <input type="file" id="profile-photo-upload" accept="image/*" style="display: none;">
+                        <button class="change-photo-button" id="change-photo-button">
+                            <span class="material-icons">photo_camera</span>
+                        </button>
                     </div>
                     <h2 id="profile-username">کاربر کتاب‌گرد</h2>
                     <p id="profile-bio">علاقه‌مند به ادبیات کلاسیک و فلسفه</p>
-                    <button class="edit-bio-button"><span class="material-icons">edit</span> ویرایش بیو</button>
+                    <button class="edit-bio-button" id="edit-bio-button"><span class="material-icons">edit</span> ویرایش بیو</button>
                     <p>نقش: <span id="profile-role">کاربر</span></p>
                     <button class="submit-button" id="logout-button">خروج از حساب</button>
                 </div>
