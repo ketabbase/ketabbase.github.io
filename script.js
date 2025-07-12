@@ -59,6 +59,8 @@ function initializeApp() {
         if (!button) return;
         button.addEventListener('click', () => {
             const target = button.getAttribute('data-target');
+            console.log('Nav button clicked, target:', target);
+            
             navButtons.forEach(btn => {
                 if (btn && btn.classList) btn.classList.remove('active');
             });
@@ -68,9 +70,21 @@ function initializeApp() {
             });
             const targetScreen = document.getElementById(target + '-screen');
             if (targetScreen && targetScreen.classList) targetScreen.classList.add('active');
+            
             // بارگذاری مجدد پست‌ها یا پروفایل هنگام سوییچ
-            if (target === 'feed-screen') loadPosts();
-            if (target === 'profile-screen') loadUserPosts();
+            if (target === 'feed-screen') {
+                console.log('Loading feed posts...');
+                loadPosts();
+            }
+            if (target === 'profile-screen') {
+                console.log('Loading profile data...');
+                if (currentUser) {
+                    loadUserProfile(currentUser);
+                    loadUserPosts();
+                } else {
+                    console.log('No user logged in, cannot load profile');
+                }
+            }
         });
     });
 
@@ -200,10 +214,14 @@ function setupAuthStateListener() {
 }
 
 function updateUIForAuthState(user) {
+    console.log('Updating UI for auth state, user:', user ? user.email : 'null');
     const screens = document.querySelectorAll('.screen');
     if (user) {
         if (loginNavButton) loginNavButton.style.display = 'none';
-        if (profileUsername) profileUsername.textContent = user.displayName || user.email;
+        if (profileUsername) {
+            profileUsername.textContent = user.displayName || user.email;
+            console.log('Profile username updated to:', profileUsername.textContent);
+        }
         if (profileRole) profileRole.textContent = 'کاربر';
 
         if (user.email === 'admin@ketabgard.com') {
@@ -219,7 +237,10 @@ function updateUIForAuthState(user) {
         if (feedScreen && feedScreen.classList) feedScreen.classList.add('active');
     } else {
         if (loginNavButton) loginNavButton.style.display = 'block';
-        if (profileUsername) profileUsername.textContent = 'کاربر کتاب‌گرد';
+        if (profileUsername) {
+            profileUsername.textContent = 'کاربر کتاب‌گرد';
+            console.log('Profile username reset to default');
+        }
         if (profileRole) profileRole.textContent = 'کاربر';
 
         document.querySelectorAll('.admin-only').forEach(el => {
@@ -360,17 +381,40 @@ async function loadPosts() {
 }
 
 async function loadUserProfile(user) {
+    console.log('Loading user profile for:', user.uid);
     try {
         const usersRef = collection(window.firebase.db, 'users');
         const q = query(usersRef, where('uid', '==', user.uid));
         const snapshot = await getDocs(q);
+        console.log('User profile query result:', snapshot.size, 'documents found');
+        
         if (!snapshot.empty) {
             const userData = snapshot.docs[0].data();
-            if (profileBio) profileBio.textContent = userData.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
-            if (profileRole) profileRole.textContent = userData.role || 'کاربر';
+            console.log('User data found:', userData);
+            if (profileBio) {
+                profileBio.textContent = userData.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
+                console.log('Profile bio updated:', profileBio.textContent);
+            }
+            if (profileRole) {
+                profileRole.textContent = userData.role || 'کاربر';
+                console.log('Profile role updated:', profileRole.textContent);
+            }
+        } else {
+            console.log('No user document found, creating default profile');
+            // Create user document if it doesn't exist
+            await addDoc(collection(window.firebase.db, 'users'), {
+                uid: user.uid,
+                username: user.displayName || user.email,
+                email: user.email,
+                bio: 'علاقه‌مند به ادبیات کلاسیک و فلسفه',
+                role: 'کاربر',
+                createdAt: serverTimestamp()
+            });
+            if (profileBio) profileBio.textContent = 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
+            if (profileRole) profileRole.textContent = 'کاربر';
         }
     } catch (error) {
-        // silent
+        console.error('Error loading user profile:', error);
     }
 }
 
