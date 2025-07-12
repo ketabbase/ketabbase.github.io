@@ -357,6 +357,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const likedByCurrentUser = currentUser && post.likedBy && post.likedBy.includes(currentUser.uid);
         const likeButtonClass = likedByCurrentUser ? 'action-button like-button liked' : 'action-button like-button';
 
+        // Check delete permissions
+        const canDeletePost = currentUser && (
+            currentUser.email === 'ketabbase@ketabgard.com' || 
+            userProfile?.role === 'admin' || 
+            post.userId === currentUser.uid
+        );
+        
+        console.log(`Post ${post.id} - Current user: ${currentUser?.email}, User profile role: ${userProfile?.role}, Post author: ${post.userId}, Current user ID: ${currentUser?.uid}, Can delete: ${canDeletePost}`);
+
         postCard.innerHTML = `
             ${postHeaderHtml}
             <div class="post-content">
@@ -372,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="action-button comment-toggle-button">
                     <span class="material-icons">comment</span> کامنت (${post.comments ? post.comments.length : 0})
                 </button>
-                ${currentUser && (currentUser.email === 'ketabbase@ketabgard.com' || userProfile?.role === 'admin' || post.userId === currentUser.uid) ? 
+                ${canDeletePost ? 
                     `<button class="action-button delete-post-button">
                         <span class="material-icons">delete</span> حذف
                     </button>` : ''
@@ -380,20 +389,30 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="comments-section" style="display: none;">
                 <div class="comments-list">
-                    ${post.comments ? post.comments.map(comment => `
-                        <div class="comment" data-comment-id="${comment.id}">
-                            <div class="comment-header">
-                                <span class="comment-author">${comment.username}</span>
-                                <span class="comment-time">${comment.timestamp ? (comment.timestamp.toDate ? comment.timestamp.toDate().toLocaleString('fa-IR') : comment.timestamp.toLocaleString('fa-IR')) : ''}</span>
+                    ${post.comments ? post.comments.map(comment => {
+                        const canDeleteComment = currentUser && (
+                            currentUser.email === 'ketabbase@ketabgard.com' || 
+                            userProfile?.role === 'admin' || 
+                            comment.userId === currentUser.uid
+                        );
+                        
+                        console.log(`Comment ${comment.id} - Can delete: ${canDeleteComment}, Comment author: ${comment.userId}, Current user: ${currentUser?.uid}`);
+                        
+                        return `
+                            <div class="comment" data-comment-id="${comment.id}">
+                                <div class="comment-header">
+                                    <span class="comment-author">${comment.username}</span>
+                                    <span class="comment-time">${comment.timestamp ? (comment.timestamp.toDate ? comment.timestamp.toDate().toLocaleString('fa-IR') : comment.timestamp.toLocaleString('fa-IR')) : ''}</span>
+                                </div>
+                                <div class="comment-text">${comment.text}</div>
+                                ${canDeleteComment ? 
+                                    `<button class="delete-comment-button">
+                                        <span class="material-icons">close</span>
+                                    </button>` : ''
+                                }
                             </div>
-                            <div class="comment-text">${comment.text}</div>
-                            ${currentUser && (currentUser.email === 'ketabbase@ketabgard.com' || userProfile?.role === 'admin' || comment.userId === currentUser.uid) ? 
-                                `<button class="delete-comment-button">
-                                    <span class="material-icons">close</span>
-                                </button>` : ''
-                            }
-                        </div>
-                    `).join('') : ''}
+                        `;
+                    }).join('') : ''}
                 </div>
                 <form class="add-comment-form">
                     <input type="text" placeholder="نظر خود را بنویسید..." class="comment-input">
@@ -406,6 +425,25 @@ document.addEventListener('DOMContentLoaded', () => {
         postCard.querySelector('.like-button').addEventListener('click', (e) => handleLike(e, post.id));
         postCard.querySelector('.comment-toggle-button').addEventListener('click', (e) => toggleComments(e));
         postCard.querySelector('.add-comment-form').addEventListener('submit', (e) => addComment(e, post.id));
+        
+        // Debug: Add a test button to check user status
+        if (currentUser) {
+            const debugButton = document.createElement('button');
+            debugButton.textContent = '🔍 Debug';
+            debugButton.style.cssText = 'position: absolute; top: 5px; right: 5px; background: #007bff; color: white; border: none; padding: 2px 6px; border-radius: 3px; font-size: 10px; cursor: pointer;';
+            debugButton.addEventListener('click', () => {
+                console.log('=== DEBUG INFO ===');
+                console.log('Current user:', currentUser);
+                console.log('User profile:', userProfile);
+                console.log('Post author ID:', post.userId);
+                console.log('Can delete post:', canDeletePost);
+                console.log('Is admin:', currentUser.email === 'ketabbase@ketabgard.com' || userProfile?.role === 'admin');
+                console.log('Is post author:', post.userId === currentUser.uid);
+                console.log('==================');
+            });
+            postCard.style.position = 'relative';
+            postCard.appendChild(debugButton);
+        }
         
         const deletePostButton = postCard.querySelector('.delete-post-button');
         if (deletePostButton) {
@@ -849,6 +887,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             console.log('Loading user profile...');
             await loadUserProfile(user.uid);
+            
+            // Debug: Log user status
+            console.log('=== USER STATUS ===');
+            console.log('User email:', user.email);
+            console.log('User UID:', user.uid);
+            console.log('User profile:', userProfile);
+            console.log('Is admin (email check):', user.email === 'ketabbase@ketabgard.com');
+            console.log('Is admin (role check):', userProfile?.role === 'admin');
+            console.log('==================');
+            
+            // Test delete permissions
+            setTimeout(() => {
+                testDeletePermissions();
+            }, 1000);
+            
             // Posts and comments are already loaded by loadPostsAndComments for all users
             
             // Test Firebase connection and comment functionality
@@ -969,9 +1022,38 @@ document.addEventListener('DOMContentLoaded', () => {
         if (auth) {
             const user = auth.currentUser;
             console.log('Current Firebase auth user:', user ? user.displayName : 'None');
+            console.log('Current user email:', user ? user.email : 'None');
+            console.log('Current user UID:', user ? user.uid : 'None');
+            console.log('User profile:', userProfile);
             return user;
         }
         return null;
+    };
+
+    // Function to test delete permissions
+    const testDeletePermissions = () => {
+        console.log('=== TESTING DELETE PERMISSIONS ===');
+        console.log('Current user:', currentUser);
+        console.log('User profile:', userProfile);
+        
+        if (currentUser) {
+            console.log('User email:', currentUser.email);
+            console.log('User UID:', currentUser.uid);
+            console.log('Is ketabbase admin:', currentUser.email === 'ketabbase@ketabgard.com');
+            console.log('Is role admin:', userProfile?.role === 'admin');
+            
+            // Test with a sample post
+            if (posts.length > 0) {
+                const samplePost = posts[0];
+                console.log('Sample post author ID:', samplePost.userId);
+                console.log('Can delete sample post:', 
+                    currentUser.email === 'ketabbase@ketabgard.com' || 
+                    userProfile?.role === 'admin' || 
+                    samplePost.userId === currentUser.uid
+                );
+            }
+        }
+        console.log('==================================');
     };
 
     // Initial setup
