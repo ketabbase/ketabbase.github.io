@@ -160,6 +160,12 @@ main {
     font-size: 2em;
 }
 
+.avatar-placeholder.small {
+    width: 30px;
+    height: 30px;
+    font-size: 0.9em;
+}
+
 .post-username {
     font-weight: 700;
     color: var(--primary-color);
@@ -277,6 +283,16 @@ main {
     align-items: center;
     gap: 8px;
     margin-bottom: 4px;
+}
+
+.comment-avatar {
+    flex-shrink: 0;
+}
+
+.comment-info {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
 }
 
 .comment-author {

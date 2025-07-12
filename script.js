@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let posts = []; // Stores all posts
     let userProfile = null; // Stores user profile data
     let isLoadingPosts = true; // Track if posts are still loading
+    let userProfiles = {}; // Stores all user profiles for avatars
     
     // Check for saved auth state
     const savedUser = localStorage.getItem('ketabboard_user');
@@ -87,6 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Load comments for all posts with real-time listener
             loadCommentsForAllPosts();
+            
+            // Load all user profiles for avatars
+            loadAllUserProfiles();
         });
     };
 
@@ -131,6 +135,23 @@ document.addEventListener('DOMContentLoaded', () => {
             renderPosts();
             console.log(`Updated comments for all posts`);
         });
+    };
+
+    const loadAllUserProfiles = async () => {
+        try {
+            const usersRef = collection(window.firebase.db, 'users');
+            const snapshot = await getDocs(usersRef);
+            
+            userProfiles = {};
+            snapshot.forEach((doc) => {
+                const userData = doc.data();
+                userProfiles[userData.uid] = userData;
+            });
+            
+            console.log(`Loaded ${Object.keys(userProfiles).length} user profiles`);
+        } catch (error) {
+            console.error('Error loading user profiles:', error);
+        }
     };
 
     // Function to show a specific screen
@@ -398,10 +419,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let postHeaderHtml = '';
         if (!isProfileView) {
+            const userAvatar = createUserAvatar(post.userId, post.username);
             postHeaderHtml = `
                 <div class="post-header">
                     <div class="post-avatar">
-                        <div class="avatar-placeholder">${(post.username || 'U').charAt(0).toUpperCase()}</div>
+                        <div class="avatar-placeholder">${userAvatar}</div>
                     </div>
                     <span class="post-username">${post.username}</span>
                     <span class="post-role">(${post.userRole === 'admin' ? 'مدیر' : 'کاربر'})</span>
@@ -453,11 +475,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         console.log(`Comment ${comment.id} - Can delete: ${canDeleteComment}, Comment author: ${comment.userId}, Current user: ${currentUser?.uid}`);
                         
+                        const commentUserAvatar = createUserAvatar(comment.userId, comment.username);
                         return `
                             <div class="comment" data-comment-id="${comment.id}">
                                 <div class="comment-header">
-                                    <span class="comment-author">${comment.username}</span>
-                                    <span class="comment-time">${comment.timestamp ? (comment.timestamp.toDate ? comment.timestamp.toDate().toLocaleString('fa-IR') : comment.timestamp.toLocaleString('fa-IR')) : ''}</span>
+                                    <div class="comment-avatar">
+                                        <div class="avatar-placeholder small">${commentUserAvatar}</div>
+                                    </div>
+                                    <div class="comment-info">
+                                        <span class="comment-author">${comment.username}</span>
+                                        <span class="comment-time">${comment.timestamp ? (comment.timestamp.toDate ? comment.timestamp.toDate().toLocaleString('fa-IR') : comment.timestamp.toLocaleString('fa-IR')) : ''}</span>
+                                    </div>
                                 </div>
                                 <div class="comment-text">${comment.text}</div>
                                 ${canDeleteComment ? 
@@ -1036,6 +1064,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const initial = (currentUser?.displayName || currentUser?.email || 'U').charAt(0).toUpperCase();
         profileAvatar.innerHTML = initial;
         console.log('Showing placeholder with initial:', initial);
+    };
+
+    const createUserAvatar = (userId, username) => {
+        const userProfile = userProfiles[userId];
+        
+        if (userProfile && userProfile.photoURL && userProfile.photoURL.startsWith('data:image')) {
+            // User has a base64 profile photo
+            return `<img src="${userProfile.photoURL}" alt="${username}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+        } else {
+            // Show placeholder with user initial
+            const initial = (username || 'U').charAt(0).toUpperCase();
+            return initial;
+        }
     };
 
     // Edit Bio functionality
