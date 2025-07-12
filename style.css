@@ -261,10 +261,24 @@ main {
 .action-button.like-button.liked {
     background-color: var(--primary-color);
     color: var(--text-color-light);
+    transform: scale(1.05);
 }
 
 .action-button.like-button.liked .material-icons {
-    color: var(--text-color-light); /* Ensure icon color changes too */
+    color: var(--text-color-light);
+    animation: likeAnimation 0.3s ease;
+}
+
+@keyframes likeAnimation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.comments-list {
+    margin-bottom: 15px;
+    max-height: 300px;
+    overflow-y: auto;
 }
 
 .comments-section {
@@ -275,23 +289,58 @@ main {
 
 .comment {
     background-color: #f9f9f9;
-    padding: 8px 12px;
-    border-radius: 5px;
-    margin-bottom: 5px;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
     font-size: 0.9em;
+    border-left: 3px solid var(--primary-color);
+}
+
+.comment-header {
     display: flex;
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
 }
 
 .comment-author {
     font-weight: 700;
     color: var(--primary-color);
-    margin-left: 5px;
+}
+
+.comment-time {
+    font-size: 0.8em;
+    color: #888;
 }
 
 .comment-text {
-    flex-grow: 1;
+    color: #333;
+    line-height: 1.4;
+}
+
+.delete-comment-button {
+    background: none;
+    border: none;
+    color: #f44336;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 3px;
+    transition: background-color 0.3s ease;
+    margin-top: 5px;
+}
+
+.delete-comment-button:hover {
+    background-color: rgba(244, 67, 54, 0.1);
+}
+
+.comment-success {
+    color: #4CAF50;
+    font-size: 0.9em;
+    margin-top: 5px;
+    text-align: center;
+    padding: 5px;
+    background-color: rgba(76, 175, 80, 0.1);
+    border-radius: 5px;
 }
 
 .add-comment-form {

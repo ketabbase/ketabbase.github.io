@@ -340,6 +340,7 @@ async function handleNewPost(e) {
             username: currentUser.displayName || currentUser.email,
             userRole: currentUser.email === 'admin@ketabgard.com' ? 'مدیر' : 'کاربر',
             likes: 0,
+            likedBy: [],
             timestamp: serverTimestamp()
         };
         
@@ -366,11 +367,27 @@ async function loadPosts() {
     try {
         const q = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
         
-        onSnapshot(q, (snapshot) => {
+        onSnapshot(q, async (snapshot) => {
             posts = [];
-            snapshot.forEach((doc) => {
-                posts.push({ id: doc.id, ...doc.data() });
-            });
+            for (const doc of snapshot.docs) {
+                const postData = { id: doc.id, ...doc.data() };
+                
+                // Load comments for this post
+                const commentsQuery = query(
+                    collection(window.firebase.db, 'comments'),
+                    where('postId', '==', doc.id),
+                    orderBy('timestamp', 'asc')
+                );
+                
+                const commentsSnapshot = await getDocs(commentsQuery);
+                const comments = [];
+                commentsSnapshot.forEach((commentDoc) => {
+                    comments.push({ id: commentDoc.id, ...commentDoc.data() });
+                });
+                
+                postData.comments = comments;
+                posts.push(postData);
+            }
             renderPosts();
         });
     } catch (error) {
@@ -453,11 +470,11 @@ function renderPosts() {
                 <blockquote class="book-quote">"${post.bookQuote}"</blockquote>
             </div>
             <div class="post-actions">
-                <button class="action-button like-button" onclick="handleLike('${post.id}')">
+                <button class="action-button like-button ${post.likedBy && post.likedBy.includes(currentUser?.uid) ? 'liked' : ''}" onclick="handleLike('${post.id}')">
                     <span class="material-icons">thumb_up</span> لایک (<span class="like-count">${post.likes || 0}</span>)
                 </button>
                 <button class="action-button comment-toggle-button" onclick="toggleComments('${post.id}')">
-                    <span class="material-icons">comment</span> کامنت
+                    <span class="material-icons">comment</span> کامنت (${post.comments ? post.comments.length : 0})
                 </button>
                 ${currentUser && (currentUser.email === 'admin@ketabgard.com' || post.userId === currentUser.uid) ? 
                     `<button class="action-button delete-post-button" onclick="deletePost('${post.id}')">
@@ -466,6 +483,22 @@ function renderPosts() {
                 }
             </div>
             <div class="comments-section" id="comments-${post.id}" style="display: none;">
+                <div class="comments-list">
+                    ${post.comments ? post.comments.map(comment => `
+                        <div class="comment">
+                            <div class="comment-header">
+                                <span class="comment-author">${comment.username}</span>
+                                <span class="comment-time">${comment.timestamp ? new Date(comment.timestamp.toDate()).toLocaleString('fa-IR') : ''}</span>
+                            </div>
+                            <div class="comment-text">${comment.text}</div>
+                            ${currentUser && (currentUser.email === 'admin@ketabgard.com' || comment.userId === currentUser.uid) ? 
+                                `<button class="delete-comment-button" onclick="deleteComment('${comment.id}')">
+                                    <span class="material-icons">delete</span>
+                                </button>` : ''
+                            }
+                        </div>
+                    `).join('') : ''}
+                </div>
                 <form class="add-comment-form" onsubmit="addComment(event, '${post.id}')">
                     <input type="text" placeholder="نظر خود را بنویسید..." class="comment-input" required>
                     <button type="submit">ارسال</button>
@@ -522,9 +555,47 @@ window.handleLike = async function(postId) {
     try {
         const postRef = doc(window.firebase.db, 'posts', postId);
         const post = posts.find(p => p.id === postId);
-        const newLikes = (post.likes || 0) + 1;
         
-        await updateDoc(postRef, { likes: newLikes });
+        if (!post) return;
+        
+        const likedBy = post.likedBy || [];
+        const userLiked = likedBy.includes(currentUser.uid);
+        
+        let newLikes, newLikedBy;
+        
+        if (userLiked) {
+            // Unlike
+            newLikes = Math.max(0, (post.likes || 0) - 1);
+            newLikedBy = likedBy.filter(id => id !== currentUser.uid);
+        } else {
+            // Like
+            newLikes = (post.likes || 0) + 1;
+            newLikedBy = [...likedBy, currentUser.uid];
+        }
+        
+        await updateDoc(postRef, { 
+            likes: newLikes,
+            likedBy: newLikedBy
+        });
+        
+        // Update local state immediately for better UX
+        post.likes = newLikes;
+        post.likedBy = newLikedBy;
+        
+        // Update the button appearance
+        const likeButton = document.querySelector(`[onclick="handleLike('${postId}')"]`);
+        if (likeButton) {
+            if (userLiked) {
+                likeButton.classList.remove('liked');
+            } else {
+                likeButton.classList.add('liked');
+            }
+            const likeCount = likeButton.querySelector('.like-count');
+            if (likeCount) {
+                likeCount.textContent = newLikes;
+            }
+        }
+        
     } catch (error) {
         console.error('Error liking post:', error);
         alert('خطا در لایک کردن');
@@ -560,8 +631,39 @@ window.addComment = async function(e, postId) {
             timestamp: serverTimestamp()
         };
         
-        await addDoc(collection(window.firebase.db, 'comments'), commentData);
+        const commentRef = await addDoc(collection(window.firebase.db, 'comments'), commentData);
+        
+        // Add comment to local state for immediate display
+        const newComment = {
+            id: commentRef.id,
+            ...commentData,
+            timestamp: new Date()
+        };
+        
+        const post = posts.find(p => p.id === postId);
+        if (post) {
+            if (!post.comments) post.comments = [];
+            post.comments.push(newComment);
+            
+            // Update comment count in button
+            const commentButton = document.querySelector(`[onclick="toggleComments('${postId}')"]`);
+            if (commentButton) {
+                const commentText = commentButton.textContent.replace(/کامنت \(\d+\)/, `کامنت (${post.comments.length})`);
+                commentButton.innerHTML = `<span class="material-icons">comment</span> ${commentText.split('کامنت ')[1]}`;
+            }
+        }
+        
         commentInput.value = '';
+        
+        // Show success message
+        const successMsg = document.createElement('div');
+        successMsg.className = 'comment-success';
+        successMsg.textContent = 'کامنت با موفقیت اضافه شد!';
+        e.target.appendChild(successMsg);
+        
+        setTimeout(() => {
+            successMsg.remove();
+        }, 2000);
         
     } catch (error) {
         console.error('Error adding comment:', error);
@@ -587,6 +689,20 @@ window.deletePost = async function(postId) {
         } catch (error) {
             console.error('Error deleting post:', error);
             alert('خطا در حذف پست');
+        }
+    }
+};
+
+window.deleteComment = async function(commentId) {
+    if (!currentUser) return;
+    
+    if (confirm('آیا مطمئن هستید که می‌خواهید این کامنت را حذف کنید؟')) {
+        try {
+            await deleteDoc(doc(window.firebase.db, 'comments', commentId));
+            alert('کامنت با موفقیت حذف شد!');
+        } catch (error) {
+            console.error('Error deleting comment:', error);
+            alert('خطا در حذف کامنت');
         }
     }
 };
