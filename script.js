@@ -577,11 +577,29 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Showing profile for user:', userId);
         
         try {
-            // Load user profile data for other users
-            const userProfileData = await loadOtherUserProfile(userId);
+            // Try to load user profile data from Firestore
+            let userProfileData = await loadOtherUserProfile(userId);
+            
+            // If not found in Firestore, create basic profile from posts data
             if (!userProfileData) {
-                alert('اطلاعات کاربر یافت نشد');
-                return;
+                console.log('User profile not found in Firestore, creating from posts data');
+                
+                // Find user's posts to get basic info
+                const userPosts = posts.filter(post => post.userId === userId);
+                if (userPosts.length > 0) {
+                    const firstPost = userPosts[0];
+                    userProfileData = {
+                        username: firstPost.username,
+                        email: firstPost.username, // Use username as email fallback
+                        role: firstPost.userRole || 'کاربر',
+                        bio: 'بیوگرافی ثبت نشده'
+                    };
+                    console.log('Created profile from posts data:', userProfileData);
+                } else {
+                    console.log('No posts found for user:', userId);
+                    alert('اطلاعات کاربر یافت نشد');
+                    return;
+                }
             }
             
             // Load user's posts
@@ -1242,20 +1260,57 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             console.log('Loading profile for user ID:', uid);
             
+            // First try to get from Firestore users collection
             const usersRef = collection(window.firebase.db, 'users');
             const q = query(usersRef, where('uid', '==', uid));
             const snapshot = await getDocs(q);
             
             if (!snapshot.empty) {
                 const userData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
-                console.log('Found user profile:', userData);
+                console.log('Found user profile in Firestore:', userData);
                 return userData;
             } else {
-                console.log('No user profile found for UID:', uid);
+                console.log('No user profile found in Firestore for UID:', uid);
+                
+                // Try to get user info from posts
+                const userPosts = posts.filter(post => post.userId === uid);
+                if (userPosts.length > 0) {
+                    const firstPost = userPosts[0];
+                    const userData = {
+                        username: firstPost.username,
+                        email: firstPost.username,
+                        role: firstPost.userRole || 'کاربر',
+                        bio: 'بیوگرافی ثبت نشده',
+                        uid: uid
+                    };
+                    console.log('Created user profile from posts data:', userData);
+                    return userData;
+                }
+                
                 return null;
             }
         } catch (error) {
             console.error('Error loading other user profile:', error);
+            
+            // Fallback: try to get user info from posts even if Firestore fails
+            try {
+                const userPosts = posts.filter(post => post.userId === uid);
+                if (userPosts.length > 0) {
+                    const firstPost = userPosts[0];
+                    const userData = {
+                        username: firstPost.username,
+                        email: firstPost.username,
+                        role: firstPost.userRole || 'کاربر',
+                        bio: 'بیوگرافی ثبت نشده',
+                        uid: uid
+                    };
+                    console.log('Created user profile from posts data (fallback):', userData);
+                    return userData;
+                }
+            } catch (fallbackError) {
+                console.error('Fallback error:', fallbackError);
+            }
+            
             return null;
         }
     };
