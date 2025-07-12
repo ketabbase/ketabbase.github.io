@@ -253,39 +253,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 
+                // Convert to base64 to avoid CORS issues
                 try {
-                    // Try Firebase Storage with timeout
-                    const storageRef = ref(window.firebase.storage, `book-covers/${Date.now()}_${bookCoverFile.name}`);
-                    
-                    // Add timeout to upload
-                    const uploadPromise = uploadBytes(storageRef, bookCoverFile);
-                    const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Upload timeout')), 10000)
-                    );
-                    
-                    const snapshot = await Promise.race([uploadPromise, timeoutPromise]);
-                    bookCoverURL = await getDownloadURL(snapshot.ref);
-                    console.log('Image uploaded successfully to Firebase Storage');
-                    
-                } catch (storageError) {
-                    console.error('Error uploading image to Firebase Storage:', storageError);
-                    
-                    // Fallback: Convert to base64 and store in Firestore
-                    try {
-                        console.log('Converting image to base64 as fallback...');
-                        const reader = new FileReader();
-                        const base64Promise = new Promise((resolve, reject) => {
-                            reader.onload = () => resolve(reader.result);
-                            reader.onerror = reject;
-                        });
-                        reader.readAsDataURL(bookCoverFile);
-                        bookCoverURL = await base64Promise;
-                        console.log('Image converted to base64 successfully');
-                    } catch (base64Error) {
-                        console.error('Error converting image to base64:', base64Error);
-                        alert('خطا در پردازش تصویر. لطفاً بدون تصویر پست را ارسال کنید.');
-                        return;
-                    }
+                    console.log('Converting image to base64...');
+                    const reader = new FileReader();
+                    const base64Promise = new Promise((resolve, reject) => {
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = reject;
+                    });
+                    reader.readAsDataURL(bookCoverFile);
+                    bookCoverURL = await base64Promise;
+                    console.log('Image converted to base64 successfully');
+                } catch (base64Error) {
+                    console.error('Error converting image to base64:', base64Error);
+                    alert('خطا در پردازش تصویر. لطفاً بدون تصویر پست را ارسال کنید.');
+                    return;
                 }
             }
 
@@ -742,9 +724,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error adding comment:', error);
             
-            // Put the text back in the input if it failed
-            commentInput.value = commentText;
-            
             // Remove the optimistic comment if it failed
             if (post) {
                 post.comments = post.comments.filter(c => c.id !== tempCommentId);
@@ -763,14 +742,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
-            // Show user-friendly error message
-            if (error.code === 'permission-denied') {
-                alert('شما دسترسی ارسال کامنت را ندارید.');
-            } else if (error.code === 'unavailable') {
-                alert('خطا در اتصال به سرور. لطفاً دوباره تلاش کنید.');
-            } else {
-                alert('خطا در افزودن کامنت. لطفاً دوباره تلاش کنید.');
-            }
+            // Clear input field regardless of success/failure
+            commentInput.value = '';
         }
     };
 
