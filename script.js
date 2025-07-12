@@ -481,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const handleLike = async (e, postId) => {
         if (!currentUser) {
-            alert('برای لایک کردن باید وارد شوید.');
+            console.log('User not logged in, cannot like post');
             showScreen('login-screen');
             return;
         }
@@ -563,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Adding comment for post:', postId);
         
         if (!currentUser) {
-            alert('برای ارسال کامنت باید وارد شوید.');
+            console.log('User not logged in, cannot add comment');
             showScreen('login-screen');
             return;
         }
@@ -791,7 +791,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const deleteComment = async (postId, commentId) => {
         if (!currentUser) {
-            alert('برای حذف کامنت باید وارد شوید.');
+            console.log('User not logged in, cannot delete comment');
             return;
         }
         
@@ -800,7 +800,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const comment = post?.comments?.find(c => c.id === commentId);
         
         if (!comment) {
-            alert('کامنت یافت نشد.');
+            console.log('Comment not found');
             return;
         }
         
@@ -809,7 +809,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isCommentAuthor = comment.userId === currentUser.uid;
         
         if (!isAdmin && !isCommentAuthor) {
-            alert('شما دسترسی حذف این کامنت را ندارید.');
+            console.log('User does not have permission to delete this comment');
             return;
         }
         
@@ -819,7 +819,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log(`Comment ${commentId} deleted successfully by ${isAdmin ? 'admin' : 'author'}`);
             } catch (error) {
                 console.error('Error deleting comment:', error);
-                alert('خطا در حذف کامنت');
             }
         }
     };
