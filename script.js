@@ -44,6 +44,14 @@ const newPostForm = document.getElementById('new-post-form');
 const postsList = document.querySelector('.posts-list');
 const userPostsList = document.querySelector('.user-posts-list');
 
+// Debug DOM elements
+console.log('DOM Elements check:');
+console.log('profileUsername element:', profileUsername);
+console.log('profileBio element:', profileBio);
+console.log('profileRole element:', profileRole);
+console.log('authForm element:', authForm);
+console.log('loginNavButton element:', loginNavButton);
+
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
@@ -403,10 +411,19 @@ async function loadUserProfile(user) {
             }
             
             // Update username from user data
+            const username = userData.username || user.displayName || user.email;
             if (profileUsername) {
-                const username = userData.username || user.displayName || user.email;
                 profileUsername.textContent = username;
                 console.log('Profile username updated from user data:', username);
+            } else {
+                // Fallback: try to find the element again
+                const profileUsernameElement = document.getElementById('profile-username');
+                if (profileUsernameElement) {
+                    profileUsernameElement.textContent = username;
+                    console.log('Profile username updated via fallback:', username);
+                } else {
+                    console.error('profileUsername element not found!');
+                }
             }
         } else {
             console.log('No user document found, creating default profile');
@@ -421,10 +438,16 @@ async function loadUserProfile(user) {
             });
             if (profileBio) profileBio.textContent = 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
             if (profileRole) profileRole.textContent = 'کاربر';
+            const username = user.displayName || user.email;
             if (profileUsername) {
-                const username = user.displayName || user.email;
                 profileUsername.textContent = username;
                 console.log('Profile username set to default:', username);
+            } else {
+                const profileUsernameElement = document.getElementById('profile-username');
+                if (profileUsernameElement) {
+                    profileUsernameElement.textContent = username;
+                    console.log('Profile username set to default via fallback:', username);
+                }
             }
         }
     } catch (error) {
