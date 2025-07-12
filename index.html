@@ -89,6 +89,30 @@
         </main>
     </div>
 
-    <script src="script.js"></script>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getStorage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyALa0FRdcMhIh2_RehjpFW80ebVIfzdDss",
+            authDomain: "ketabgard-48d6e.firebaseapp.com",
+            projectId: "ketabgard-48d6e",
+            storageBucket: "ketabgard-48d6e.firebasestorage.app",
+            messagingSenderId: "122721307630",
+            appId: "1:122721307630:web:0b62bd4f43afa273785cff"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        window.firebase = { auth, db, storage };
+    </script>
+
+    <script type="module" src="script.js"></script>
 </body>
 </html>
