@@ -380,6 +380,42 @@ main {
     color: white;
     font-weight: bold;
     font-size: 2em;
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-picture img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.change-photo-button {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.change-photo-button:hover {
+    background-color: var(--accent-color);
+    transform: scale(1.1);
+}
+
+.change-photo-button .material-icons {
+    font-size: 16px;
 }
 
 #profile-screen h2 {

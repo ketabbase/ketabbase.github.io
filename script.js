@@ -45,6 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutButton = document.getElementById('logout-button');
     const loginNavButton = document.getElementById('login-nav-button');
     const editBioButton = document.querySelector('.edit-bio-button');
+    const changePhotoButton = document.getElementById('change-photo-button');
+    const profilePhotoUpload = document.getElementById('profile-photo-upload');
+    const profileAvatar = document.getElementById('profile-avatar');
 
     let currentUser = null; // Stores current logged-in user
     let posts = []; // Stores all posts
@@ -171,8 +174,16 @@ document.addEventListener('DOMContentLoaded', () => {
             profileRole.textContent = userProfile?.role || 'کاربر';
             profileBio.textContent = userProfile?.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
             editBioButton.style.display = 'flex';
+            changePhotoButton.style.display = 'flex';
             if (profileBio.querySelector('textarea')) {
                 profileBio.innerHTML = userProfile?.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
+            }
+            
+            // Update profile photo
+            if (userProfile?.photoURL) {
+                updateProfilePhoto(userProfile.photoURL);
+            } else {
+                updateProfilePhoto(null);
             }
         } else {
             loginNavButton.style.display = 'flex';
@@ -181,6 +192,8 @@ document.addEventListener('DOMContentLoaded', () => {
             profileRole.textContent = 'مهمان';
             profileBio.textContent = 'برای مشاهده و ارسال پست وارد شوید.';
             editBioButton.style.display = 'none';
+            changePhotoButton.style.display = 'none';
+            updateProfilePhoto(null);
         }
 
         updateAdminControls();
@@ -917,6 +930,81 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Change Profile Photo functionality
+    changePhotoButton.addEventListener('click', () => {
+        if (!currentUser) return;
+        profilePhotoUpload.click();
+    });
+
+    profilePhotoUpload.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Check file size (max 5MB)
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+            alert('حجم تصویر نباید بیشتر از 5 مگابایت باشد.');
+            return;
+        }
+
+        try {
+            // Show loading state
+            changePhotoButton.innerHTML = '<span class="material-icons">hourglass_empty</span>';
+            changePhotoButton.disabled = true;
+
+            // Convert to base64
+            const reader = new FileReader();
+            const base64Promise = new Promise((resolve, reject) => {
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+            });
+            reader.readAsDataURL(file);
+            const photoURL = await base64Promise;
+
+            // Update UI immediately
+            updateProfilePhoto(photoURL);
+
+            // Save to Firestore
+            const usersRef = collection(window.firebase.db, 'users');
+            const q = query(usersRef, where('uid', '==', currentUser.uid));
+            const snapshot = await getDocs(q);
+            
+            if (!snapshot.empty) {
+                const userDoc = snapshot.docs[0];
+                await updateDoc(doc(window.firebase.db, 'users', userDoc.id), { 
+                    photoURL: photoURL 
+                });
+                userProfile.photoURL = photoURL;
+            }
+
+            console.log('Profile photo updated successfully');
+        } catch (error) {
+            console.error('Error updating profile photo:', error);
+            alert('خطا در به‌روزرسانی عکس پروفایل');
+        } finally {
+            // Reset button state
+            changePhotoButton.innerHTML = '<span class="material-icons">photo_camera</span>';
+            changePhotoButton.disabled = false;
+        }
+    });
+
+    const updateProfilePhoto = (photoURL) => {
+        if (photoURL) {
+            // Create image element
+            const img = document.createElement('img');
+            img.src = photoURL;
+            img.alt = 'Profile Photo';
+            
+            // Clear existing content and add image
+            profileAvatar.innerHTML = '';
+            profileAvatar.appendChild(img);
+        } else {
+            // Show placeholder with user initial
+            const initial = (currentUser?.displayName || currentUser?.email || 'U').charAt(0).toUpperCase();
+            profileAvatar.innerHTML = initial;
+        }
+    };
+
     // Edit Bio functionality
     editBioButton.addEventListener('click', async () => {
         if (!currentUser) return;
@@ -972,6 +1060,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (!snapshot.empty) {
                 userProfile = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+                
+                // Update profile photo if exists
+                if (userProfile.photoURL) {
+                    updateProfilePhoto(userProfile.photoURL);
+                }
             } else {
                 userProfile = { role: 'کاربر', bio: 'علاقه‌مند به ادبیات کلاسیک و فلسفه' };
             }
