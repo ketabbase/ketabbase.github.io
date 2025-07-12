@@ -972,12 +972,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!snapshot.empty) {
                 const userDoc = snapshot.docs[0];
                 await updateDoc(doc(window.firebase.db, 'users', userDoc.id), { 
-                    photoURL: photoURL 
+                    photoURL: photoURL,
+                    // Remove old Firebase Storage URL if exists
+                    profilePhotoURL: null
                 });
                 userProfile.photoURL = photoURL;
+                userProfile.profilePhotoURL = null; // Clear old URL
             }
 
-            console.log('Profile photo updated successfully');
+            console.log('Profile photo updated successfully with base64');
         } catch (error) {
             console.error('Error updating profile photo:', error);
             alert('خطا در به‌روزرسانی عکس پروفایل');
@@ -989,20 +992,50 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const updateProfilePhoto = (photoURL) => {
-        if (photoURL) {
-            // Create image element
+        console.log('Updating profile photo with URL:', photoURL ? photoURL.substring(0, 50) + '...' : 'null');
+        
+        if (photoURL && photoURL.startsWith('data:image')) {
+            // Base64 image - safe to use
             const img = document.createElement('img');
             img.src = photoURL;
             img.alt = 'Profile Photo';
+            img.onerror = () => {
+                console.error('Failed to load profile image');
+                showPlaceholder();
+            };
+            
+            // Clear existing content and add image
+            profileAvatar.innerHTML = '';
+            profileAvatar.appendChild(img);
+            console.log('Base64 image loaded successfully');
+        } else if (photoURL && photoURL.startsWith('https://')) {
+            // External URL - might have CORS issues
+            console.log('External URL detected, trying to load...');
+            const img = document.createElement('img');
+            img.crossOrigin = 'anonymous';
+            img.src = photoURL;
+            img.alt = 'Profile Photo';
+            img.onerror = () => {
+                console.error('Failed to load external image, showing placeholder');
+                showPlaceholder();
+            };
+            img.onload = () => {
+                console.log('External image loaded successfully');
+            };
             
             // Clear existing content and add image
             profileAvatar.innerHTML = '';
             profileAvatar.appendChild(img);
         } else {
-            // Show placeholder with user initial
-            const initial = (currentUser?.displayName || currentUser?.email || 'U').charAt(0).toUpperCase();
-            profileAvatar.innerHTML = initial;
+            // No photo or invalid URL - show placeholder
+            showPlaceholder();
         }
+    };
+
+    const showPlaceholder = () => {
+        const initial = (currentUser?.displayName || currentUser?.email || 'U').charAt(0).toUpperCase();
+        profileAvatar.innerHTML = initial;
+        console.log('Showing placeholder with initial:', initial);
     };
 
     // Edit Bio functionality
@@ -1061,12 +1094,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!snapshot.empty) {
                 userProfile = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
                 
-                // Update profile photo if exists
-                if (userProfile.photoURL) {
+                // Update profile photo if exists (prefer base64 over external URLs)
+                if (userProfile.photoURL && userProfile.photoURL.startsWith('data:image')) {
+                    console.log('Loading base64 profile photo');
                     updateProfilePhoto(userProfile.photoURL);
+                } else if (userProfile.photoURL && userProfile.photoURL.startsWith('https://')) {
+                    console.log('External profile photo URL detected, may have CORS issues');
+                    // Try to load external URL but fallback to placeholder if it fails
+                    updateProfilePhoto(userProfile.photoURL);
+                } else {
+                    console.log('No profile photo found, showing placeholder');
+                    updateProfilePhoto(null);
                 }
             } else {
                 userProfile = { role: 'کاربر', bio: 'علاقه‌مند به ادبیات کلاسیک و فلسفه' };
+                updateProfilePhoto(null);
             }
         } catch (error) {
             console.error('Error loading user profile:', error);
