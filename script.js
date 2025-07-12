@@ -426,23 +426,9 @@ document.addEventListener('DOMContentLoaded', () => {
         postCard.querySelector('.comment-toggle-button').addEventListener('click', (e) => toggleComments(e));
         postCard.querySelector('.add-comment-form').addEventListener('submit', (e) => addComment(e, post.id));
         
-        // Debug: Add a test button to check user status
+        // Debug info (optional - can be removed)
         if (currentUser) {
-            const debugButton = document.createElement('button');
-            debugButton.textContent = '🔍 Debug';
-            debugButton.style.cssText = 'position: absolute; top: 5px; right: 5px; background: #007bff; color: white; border: none; padding: 2px 6px; border-radius: 3px; font-size: 10px; cursor: pointer;';
-            debugButton.addEventListener('click', () => {
-                console.log('=== DEBUG INFO ===');
-                console.log('Current user:', currentUser);
-                console.log('User profile:', userProfile);
-                console.log('Post author ID:', post.userId);
-                console.log('Can delete post:', canDeletePost);
-                console.log('Is admin:', currentUser.email === 'ketabbase@ketabgard.com' || userProfile?.role === 'admin');
-                console.log('Is post author:', post.userId === currentUser.uid);
-                console.log('==================');
-            });
-            postCard.style.position = 'relative';
-            postCard.appendChild(debugButton);
+            console.log(`Post ${post.id} - Can delete: ${canDeletePost}`);
         }
         
         const deletePostButton = postCard.querySelector('.delete-post-button');
@@ -565,8 +551,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Optimistic UI update - add comment immediately to local state
         const post = posts.find(p => p.id === postId);
         if (post) {
+            const tempCommentId = 'temp-' + Date.now();
             const tempComment = {
-                id: 'temp-' + Date.now(),
+                id: tempCommentId,
                 postId,
                 userId: currentUser.uid,
                 username: currentUser.displayName || currentUser.email,
@@ -584,14 +571,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (commentsList) {
                     const commentElement = document.createElement('div');
                     commentElement.className = 'comment';
-                    commentElement.dataset.commentId = tempComment.id;
+                    commentElement.dataset.commentId = tempCommentId;
                     commentElement.innerHTML = `
                         <div class="comment-header">
                             <span class="comment-author">${tempComment.username}</span>
                             <span class="comment-time">${tempComment.timestamp.toLocaleString('fa-IR')}</span>
                         </div>
                         <div class="comment-text">${tempComment.text}</div>
+                        <button class="delete-comment-button">
+                            <span class="material-icons">close</span>
+                        </button>
                     `;
+                    
+                    // Add event listener for delete button
+                    const deleteButton = commentElement.querySelector('.delete-comment-button');
+                    if (deleteButton) {
+                        deleteButton.addEventListener('click', (e) => {
+                            const commentEl = e.target.closest('.comment');
+                            if (commentEl) {
+                                const commentId = commentEl.dataset.commentId;
+                                deleteComment(post.id, commentId);
+                            }
+                        });
+                    }
+                    
                     commentsList.appendChild(commentElement);
                     
                     // Update comment count
@@ -637,8 +640,20 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Remove the optimistic comment if it failed
             if (post) {
-                post.comments = post.comments.filter(c => c.id !== 'temp-' + Date.now());
-                renderPosts();
+                post.comments = post.comments.filter(c => c.id !== tempCommentId);
+                
+                // Remove from UI
+                const postCard = document.querySelector(`[data-post-id="${postId}"]`);
+                if (postCard) {
+                    const tempCommentElement = postCard.querySelector(`[data-comment-id="${tempCommentId}"]`);
+                    if (tempCommentElement) {
+                        tempCommentElement.remove();
+                    }
+                    
+                    // Update comment count
+                    const commentButton = postCard.querySelector('.comment-toggle-button');
+                    commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${post.comments.length})`;
+                }
             }
         }
     };
@@ -1080,9 +1095,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         const post = posts.find(p => p.id === newComment.postId);
                         if (post) {
                             if (!post.comments) post.comments = [];
-                            // Check if comment already exists
-                            const existingComment = post.comments.find(c => c.id === newComment.id);
+                            
+                            // Check if comment already exists (including temp comments)
+                            const existingComment = post.comments.find(c => 
+                                c.id === newComment.id || 
+                                (c.id.startsWith('temp-') && c.text === newComment.text && c.userId === newComment.userId)
+                            );
+                            
                             if (!existingComment) {
+                                // Remove any temp comment with same text and user
+                                post.comments = post.comments.filter(c => 
+                                    !(c.id.startsWith('temp-') && c.text === newComment.text && c.userId === newComment.userId)
+                                );
+                                
                                 post.comments.push(newComment);
                                 // Sort comments by timestamp
                                 post.comments.sort((a, b) => {
@@ -1095,18 +1120,50 @@ document.addEventListener('DOMContentLoaded', () => {
                                 // Update UI if the post is currently visible
                                 const postCard = document.querySelector(`[data-post-id="${post.id}"]`);
                                 if (postCard) {
+                                    // Remove temp comment from UI if exists
+                                    const tempCommentElement = postCard.querySelector(`[data-comment-id^="temp-"]`);
+                                    if (tempCommentElement) {
+                                        tempCommentElement.remove();
+                                    }
+                                    
                                     const commentsList = postCard.querySelector('.comments-list');
                                     if (commentsList) {
                                         const commentElement = document.createElement('div');
                                         commentElement.className = 'comment';
                                         commentElement.dataset.commentId = newComment.id;
+                                        
+                                        // Check if user can delete this comment
+                                        const canDeleteComment = currentUser && (
+                                            currentUser.email === 'ketabbase@ketabgard.com' || 
+                                            userProfile?.role === 'admin' || 
+                                            newComment.userId === currentUser.uid
+                                        );
+                                        
                                         commentElement.innerHTML = `
                                             <div class="comment-header">
                                                 <span class="comment-author">${newComment.username}</span>
                                                 <span class="comment-time">${newComment.timestamp?.toLocaleString ? newComment.timestamp.toLocaleString('fa-IR') : ''}</span>
                                             </div>
                                             <div class="comment-text">${newComment.text}</div>
+                                            ${canDeleteComment ? 
+                                                `<button class="delete-comment-button">
+                                                    <span class="material-icons">close</span>
+                                                </button>` : ''
+                                            }
                                         `;
+                                        
+                                        // Add event listener for delete button
+                                        const deleteButton = commentElement.querySelector('.delete-comment-button');
+                                        if (deleteButton) {
+                                            deleteButton.addEventListener('click', (e) => {
+                                                const commentEl = e.target.closest('.comment');
+                                                if (commentEl) {
+                                                    const commentId = commentEl.dataset.commentId;
+                                                    deleteComment(post.id, commentId);
+                                                }
+                                            });
+                                        }
+                                        
                                         commentsList.appendChild(commentElement);
                                         
                                         // Update comment count
