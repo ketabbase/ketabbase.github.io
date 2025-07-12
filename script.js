@@ -58,21 +58,23 @@ function initializeApp() {
     const navButtons = document.querySelectorAll('.nav-button');
     const screens = document.querySelectorAll('.screen');
 
+    console.log('navButtons:', navButtons);
+
     navButtons.forEach(button => {
         if (!button) return;
         button.addEventListener('click', () => {
             const target = button.getAttribute('data-target');
             // Update active nav button
             navButtons.forEach(btn => {
-                if (btn) btn.classList.remove('active');
+                if (btn && btn.classList) btn.classList.remove('active');
             });
-            if (button) button.classList.add('active');
+            if (button && button.classList) button.classList.add('active');
             // Show target screen
             screens.forEach(screen => {
-                if (screen) screen.classList.remove('active');
+                if (screen && screen.classList) screen.classList.remove('active');
             });
             const targetScreen = document.getElementById(target + '-screen');
-            if (targetScreen) targetScreen.classList.add('active');
+            if (targetScreen && targetScreen.classList) targetScreen.classList.add('active');
         });
     });
 
