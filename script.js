@@ -243,6 +243,17 @@ document.addEventListener('DOMContentLoaded', () => {
             showScreen(button.dataset.target);
         });
     });
+    
+    // Event delegation for profile clicks
+    document.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-clickable="true"]');
+        if (target && target.dataset.userId) {
+            console.log('Profile element clicked for user:', target.dataset.userId);
+            e.preventDefault();
+            e.stopPropagation();
+            showUserProfile(target.dataset.userId);
+        }
+    });
 
     // FAB - Add Post button
     addPostButton.addEventListener('click', () => {
@@ -514,29 +525,14 @@ document.addEventListener('DOMContentLoaded', () => {
         postCard.querySelector('.comment-toggle-button').addEventListener('click', (e) => toggleComments(e));
         postCard.querySelector('.add-comment-form').addEventListener('submit', (e) => addComment(e, post.id));
         
-        // Add click listeners for profile photos and usernames
-        const postAvatar = postCard.querySelector('.post-avatar');
-        const postUsername = postCard.querySelector('.post-username');
-        
-        console.log('Adding click listeners for post:', post.id);
-        console.log('Post avatar element:', postAvatar);
-        console.log('Post username element:', postUsername);
-        
+        // Add data attributes for event delegation
         if (postAvatar) {
-            postAvatar.addEventListener('click', (e) => {
-                console.log('Post avatar clicked for user:', post.userId);
-                e.preventDefault();
-                e.stopPropagation();
-                showUserProfile(post.userId);
-            });
+            postAvatar.dataset.userId = post.userId;
+            postAvatar.dataset.clickable = 'true';
         }
         if (postUsername) {
-            postUsername.addEventListener('click', (e) => {
-                console.log('Post username clicked for user:', post.userId);
-                e.preventDefault();
-                e.stopPropagation();
-                showUserProfile(post.userId);
-            });
+            postUsername.dataset.userId = post.userId;
+            postUsername.dataset.clickable = 'true';
         }
         
         // Debug info (optional - can be removed)
@@ -544,18 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Post ${post.id} - Can delete: ${canDeletePost}`);
         }
         
-        // Add a test button for debugging (temporary)
-        if (postAvatar) {
-            const testButton = document.createElement('button');
-            testButton.textContent = 'تست کلیک';
-            testButton.style.cssText = 'position: absolute; top: 5px; right: 5px; background: red; color: white; border: none; padding: 2px 5px; font-size: 10px; cursor: pointer;';
-            testButton.addEventListener('click', () => {
-                console.log('Test button clicked for user:', post.userId);
-                showUserProfile(post.userId);
-            });
-            postCard.style.position = 'relative';
-            postCard.appendChild(testButton);
-        }
+
         
         const deletePostButton = postCard.querySelector('.delete-post-button');
         if (deletePostButton) {
@@ -592,8 +577,8 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Showing profile for user:', userId);
         
         try {
-            // Load user profile data
-            const userProfileData = await loadUserProfile(userId);
+            // Load user profile data for other users
+            const userProfileData = await loadOtherUserProfile(userId);
             if (!userProfileData) {
                 alert('اطلاعات کاربر یافت نشد');
                 return;
@@ -1251,6 +1236,29 @@ document.addEventListener('DOMContentLoaded', () => {
             editBioButton.innerHTML = '<span class="material-icons">done</span> ذخیره بیو';
         }
     });
+
+    // Load other user's profile (for viewing profiles)
+    const loadOtherUserProfile = async (uid) => {
+        try {
+            console.log('Loading profile for user ID:', uid);
+            
+            const usersRef = collection(window.firebase.db, 'users');
+            const q = query(usersRef, where('uid', '==', uid));
+            const snapshot = await getDocs(q);
+            
+            if (!snapshot.empty) {
+                const userData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+                console.log('Found user profile:', userData);
+                return userData;
+            } else {
+                console.log('No user profile found for UID:', uid);
+                return null;
+            }
+        } catch (error) {
+            console.error('Error loading other user profile:', error);
+            return null;
+        }
+    };
 
     // Load user profile
     const loadUserProfile = async (uid) => {
