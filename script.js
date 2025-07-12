@@ -1,182 +1,96 @@
+ // Firebase imports
+import { 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    signOut, 
+    onAuthStateChanged,
+    updateProfile 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+import { 
+    collection, 
+    addDoc, 
+    getDocs, 
+    doc, 
+    updateDoc, 
+    deleteDoc, 
+    query, 
+    orderBy, 
+    where,
+    serverTimestamp,
+    onSnapshot 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+import { 
+    ref, 
+    uploadBytes, 
+    getDownloadURL 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+// Global variables
+let currentUser = null;
+let posts = [];
+let userPosts = [];
+
+// DOM elements
+const authForm = document.getElementById('auth-form');
+const loginNavButton = document.getElementById('login-nav-button');
+const profileUsername = document.getElementById('profile-username');
+const profileBio = document.getElementById('profile-bio');
+const profileRole = document.getElementById('profile-role');
+const logoutButton = document.getElementById('logout-button');
+const addPostButton = document.getElementById('add-post-button');
+const newPostForm = document.getElementById('new-post-form');
+const postsList = document.querySelector('.posts-list');
+const userPostsList = document.querySelector('.user-posts-list');
+
+// Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
+    initializeApp();
+    setupEventListeners();
+    setupAuthStateListener();
+});
+
+function initializeApp() {
+    // Navigation functionality
     const navButtons = document.querySelectorAll('.nav-button');
     const screens = document.querySelectorAll('.screen');
-    const addPostButton = document.getElementById('add-post-button');
-    const cancelPostButton = document.getElementById('cancel-post-button');
-    const newPostForm = document.getElementById('new-post-form');
-    const bookCoverUpload = document.getElementById('book-cover-upload');
-    const bookCoverPreview = document.getElementById('book-cover-preview');
-    const feedScreen = document.getElementById('feed-screen');
-    const postsList = feedScreen.querySelector('.posts-list');
-    const profileUsername = document.getElementById('profile-username');
-    const profileBio = document.getElementById('profile-bio');
-    const profileRole = document.getElementById('profile-role');
-    const authForm = document.getElementById('auth-form');
-    const registerButton = document.getElementById('register-button');
-    const logoutButton = document.getElementById('logout-button');
-    const loginNavButton = document.getElementById('login-nav-button');
-    const editBioButton = document.querySelector('.edit-bio-button');
 
-    let currentUser = null; // Stores current logged-in user: { username, role, bio }
-    let posts = []; // Stores all posts
-    let users = [
-        { username: 'ketab', password: '123', role: 'admin', bio: 'مدیر سیستم و علاقه‌مند به کتاب', likedPosts: new Set() },
-        { username: 'کاربر کتاب‌دوست', password: 'userpassword', role: 'user', bio: 'علاقه‌مند به ادبیات کلاسیک و فلسفه', likedPosts: new Set() },
-        { username: 'کتاب‌خوان حرفه‌ای', password: 'userpassword2', role: 'user', bio: 'کتاب‌ها پنجره‌ای رو به دنیاهای جدید.', likedPosts: new Set() }
-    ]; // In a real app, this would be on a server
-
-    // Initial example posts
-    posts.push({
-        id: 1,
-        username: 'کاربر کتاب‌دوست',
-        role: 'user',
-        coverSrc: 'book_cover_example.png',
-        title: 'چهار اثر از فلورانس اسکاول شین',
-        author: 'فلورانس اسکاول شین',
-        quote: 'همواره به یاد داشته باشید که هر چه را که به جهان هستی می‌دهید، به سوی شما باز می‌گردد.',
-        likes: 0,
-        comments: [{ id: 1, author: 'کتاب‌خوان حرفه‌ای', role: 'user', text: 'کتاب فوق‌العاده‌ای بود!' }]
-    });
-
-    posts.push({
-        id: 2,
-        username: 'کاربر کتاب‌گرد',
-        role: 'user',
-        coverSrc: 'book_cover_example_2.png',
-        title: 'کیمیاگر',
-        author: 'پائولو کوئلیو',
-        quote: 'وقتی آرزوئی داری، تمام کائنات همواره با تو دست به یکی می‌شوند تا آن را برآورده کنی.',
-        likes: 0,
-        comments: []
-    });
-
-    // Function to show a specific screen
-    const showScreen = (screenId) => {
-        screens.forEach(screen => {
-            screen.classList.remove('active');
-        });
-        document.getElementById(screenId).classList.add('active');
-
-        // Update active nav button
-        navButtons.forEach(button => {
-            if (button.dataset.target === screenId) {
-                button.classList.add('active');
-            } else {
-                button.classList.remove('active');
-            }
-        });
-
-        // Show/hide FAB based on screen
-        if (screenId === 'feed-screen' && currentUser) { // Only show FAB if on feed and logged in
-            addPostButton.style.display = 'flex';
-        } else {
-            addPostButton.style.display = 'none';
-        }
-
-        // Update login/logout button visibility and profile info
-        if (currentUser) {
-            loginNavButton.style.display = 'none'; // Hide login if logged in
-            logoutButton.style.display = 'block';
-            profileUsername.textContent = currentUser.username;
-            profileRole.textContent = currentUser.role === 'admin' ? 'مدیر' : 'کاربر';
-            profileBio.textContent = currentUser.bio; // Set user's custom bio
-            editBioButton.style.display = 'flex'; // Show edit bio button for logged-in users
-            if (profileBio.querySelector('textarea')) { // If bio is currently being edited, revert to text
-                profileBio.innerHTML = currentUser.bio;
-            }
-        } else {
-            loginNavButton.style.display = 'flex'; // Show login if logged out
-            logoutButton.style.display = 'none';
-            profileUsername.textContent = 'کاربر مهمان';
-            profileRole.textContent = 'مهمان';
-            profileBio.textContent = 'برای مشاهده و ارسال پست وارد شوید.';
-            editBioButton.style.display = 'none'; // Hide edit bio button if logged out
-        }
-
-        updateAdminControls();
-
-        // بعد از نمایش صفحه پروفایل، event listener را اضافه کن
-        if (screenId === 'profile-screen') {
-            setupProfileImageChange();
-        }
-    };
-
-    function setupProfileImageChange() {
-        const changeProfileImageButton = document.getElementById('change-profile-image-button');
-        const profileImageUploadProfile = document.getElementById('profile-image-upload-profile');
-        const profilePicture = document.querySelector('.profile-picture');
-        if (changeProfileImageButton && profileImageUploadProfile) {
-            // Remove previous event listeners by resetting to null
-            changeProfileImageButton.onclick = null;
-            profileImageUploadProfile.onchange = null;
-            changeProfileImageButton.onclick = (e) => {
-                e.preventDefault();
-                profileImageUploadProfile.value = '';
-                profileImageUploadProfile.click();
-            };
-            profileImageUploadProfile.onchange = function() {
-                const file = this.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        if (profilePicture) {
-                            profilePicture.src = e.target.result;
-                        }
-                        if (currentUser) {
-                            const userData = localStorage.getItem('user_' + currentUser.username);
-                            let userObj = userData ? JSON.parse(userData) : {};
-                            userObj.profileImage = e.target.result;
-                            localStorage.setItem('user_' + currentUser.username, JSON.stringify(userObj));
-                            const userInArray = users.find(u => u.username === currentUser.username);
-                            if (userInArray) {
-                                userInArray.profileImage = e.target.result;
-                            }
-                        }
-                    };
-                    reader.readAsDataURL(file);
-                }
-            };
-        }
-    }
-
-    // Function to update admin controls
-    const updateAdminControls = () => {
-        const adminElements = document.querySelectorAll('.admin-only');
-        if (currentUser && currentUser.role === 'admin') {
-            adminElements.forEach(el => el.style.display = 'inline-flex'); // Use inline-flex for buttons
-        } else {
-            adminElements.forEach(el => el.style.display = 'none');
-        }
-    };
-
-    // Navigation buttons functionality
     navButtons.forEach(button => {
         button.addEventListener('click', () => {
-            showScreen(button.dataset.target);
+            const target = button.getAttribute('data-target');
+            
+            // Update active nav button
+            navButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            // Show target screen
+            screens.forEach(screen => screen.classList.remove('active'));
+            document.getElementById(target + '-screen').classList.add('active');
         });
     });
 
-    // FAB - Add Post button
+    // Add post button
     addPostButton.addEventListener('click', () => {
-        if (currentUser) {
-            showScreen('add-post-screen');
-        } else {
-            alert('لطفاً ابتدا وارد شوید تا بتوانید پست ارسال کنید.');
-            showScreen('login-screen');
-        }
+        screens.forEach(screen => screen.classList.remove('active'));
+        document.getElementById('add-post-screen').classList.add('active');
     });
 
-    // Cancel Post button
-    cancelPostButton.addEventListener('click', () => {
-        showScreen('feed-screen');
-        newPostForm.reset();
-        bookCoverPreview.style.display = 'none';
-        bookCoverPreview.src = '#';
+    // Cancel post button
+    document.getElementById('cancel-post-button').addEventListener('click', () => {
+        screens.forEach(screen => screen.classList.remove('active'));
+        document.getElementById('feed-screen').classList.add('active');
+        navButtons[0].classList.add('active');
+        navButtons.forEach(btn => btn.classList.remove('active'));
+        navButtons[0].classList.add('active');
     });
 
-    // Book Cover Image Preview
-    bookCoverUpload.addEventListener('change', (event) => {
-        const file = event.target.files[0];
+    // Book cover preview
+    const bookCoverUpload = document.getElementById('book-cover-upload');
+    const bookCoverPreview = document.getElementById('book-cover-preview');
+    
+    bookCoverUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -184,404 +98,471 @@ document.addEventListener('DOMContentLoaded', () => {
                 bookCoverPreview.style.display = 'block';
             };
             reader.readAsDataURL(file);
-        } else {
-            bookCoverPreview.style.display = 'none';
-            bookCoverPreview.src = '#';
         }
     });
 
-    // Handle New Post Submission
-    newPostForm.addEventListener('submit', (event) => {
-        event.preventDefault();
+    // Profile image upload
+    const profileImageUpload = document.getElementById('profile-image-upload-profile');
+    const changeProfileImageButton = document.getElementById('change-profile-image-button');
+    
+    changeProfileImageButton.addEventListener('click', () => {
+        profileImageUpload.click();
+    });
 
-        if (!currentUser) {
-            alert('برای ارسال پست باید وارد شوید.');
-            showScreen('login-screen');
-            return;
+    profileImageUpload.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file && currentUser) {
+            try {
+                const storageRef = ref(window.firebase.storage, `profile-images/${currentUser.uid}`);
+                const snapshot = await uploadBytes(storageRef, file);
+                const downloadURL = await getDownloadURL(snapshot.ref);
+                
+                await updateProfile(currentUser, { photoURL: downloadURL });
+                alert('عکس پروفایل با موفقیت تغییر یافت!');
+            } catch (error) {
+                console.error('Error uploading profile image:', error);
+                alert('خطا در آپلود عکس پروفایل');
+            }
         }
+    });
+}
 
-        const bookTitle = document.getElementById('book-title').value;
-        const bookAuthor = document.getElementById('book-author').value;
-        const bookQuote = document.getElementById('book-quote').value;
-        const bookCoverFile = document.getElementById('book-cover-upload').files[0];
-
-        let bookCoverSrc = '';
-        const postId = posts.length > 0 ? Math.max(...posts.map(p => p.id)) + 1 : 1;
-
-        if (bookCoverFile) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                bookCoverSrc = e.target.result;
-                const newPost = {
-                    id: postId,
-                    username: currentUser.username,
-                    role: currentUser.role,
-                    coverSrc: bookCoverSrc,
-                    title: bookTitle,
-                    author: bookAuthor,
-                    quote: bookQuote,
-                    likes: 0,
-                    comments: []
-                };
-                posts.unshift(newPost); // Add to the beginning of the array
-                renderPosts();
-                newPostForm.reset();
-                bookCoverPreview.style.display = 'none';
-                bookCoverPreview.src = '#';
-                showScreen('feed-screen');
-            };
-            reader.readAsDataURL(bookCoverFile);
+function setupEventListeners() {
+    // Authentication form
+    authForm.addEventListener('submit', handleAuth);
+    
+    // Register button
+    document.getElementById('register-button').addEventListener('click', () => {
+        const submitButton = authForm.querySelector('button[type="submit"]');
+        if (submitButton.textContent === 'ورود') {
+            submitButton.textContent = 'ثبت نام';
+            document.getElementById('register-button').textContent = 'ورود';
         } else {
-            const newPost = {
-                id: postId,
-                username: currentUser.username,
-                role: currentUser.role,
-                coverSrc: '',
-                title: bookTitle,
-                author: bookAuthor,
-                quote: bookQuote,
-                likes: 0,
-                comments: []
-            };
-            posts.unshift(newPost); // Add to the beginning of the array
+            submitButton.textContent = 'ورود';
+            document.getElementById('register-button').textContent = 'ثبت نام';
+        }
+    });
+
+    // Logout button
+    logoutButton.addEventListener('click', handleLogout);
+
+    // New post form
+    newPostForm.addEventListener('submit', handleNewPost);
+
+    // Edit bio button
+    document.querySelector('.edit-bio-button').addEventListener('click', () => {
+        const newBio = prompt('بیو جدید خود را وارد کنید:');
+        if (newBio && currentUser) {
+            updateUserBio(newBio);
+        }
+    });
+}
+
+function setupAuthStateListener() {
+    onAuthStateChanged(window.firebase.auth, (user) => {
+        currentUser = user;
+        updateUIForAuthState(user);
+        
+        if (user) {
+            loadUserProfile(user);
+            loadPosts();
+            loadUserPosts();
+        } else {
+            posts = [];
+            userPosts = [];
             renderPosts();
-            newPostForm.reset();
-            bookCoverPreview.style.display = 'none';
-            bookCoverPreview.src = '#';
-            showScreen('feed-screen');
+            renderUserPosts();
         }
     });
+}
 
-    const renderPosts = () => {
-        postsList.innerHTML = ''; // Clear existing posts
-        const userPostsList = document.querySelector('#profile-screen .user-posts-list');
-        userPostsList.innerHTML = ''; // Clear existing user posts
-
-        posts.forEach(post => {
-            const newPostCard = createPostCard(post);
-            postsList.appendChild(newPostCard);
-
-            if (currentUser && post.username === currentUser.username) {
-                const userPostCard = createPostCard(post, true); // True for profile view
-                userPostsList.appendChild(userPostCard);
-            }
-        });
-        updateAdminControls();
-    };
-
-    const createPostCard = (post, isProfileView = false) => {
-        const postCard = document.createElement('div');
-        postCard.classList.add('post-card');
-        postCard.dataset.postId = post.id;
-
-        let postHeaderHtml = '';
-        if (!isProfileView) {
-            // Try to get user profile image from localStorage or users array
-            let profileImageSrc = 'avatar.png';
-            let userObj = users.find(u => u.username === post.username);
-            if (!userObj) {
-                // Try localStorage fallback
-                const userData = localStorage.getItem('user_' + post.username);
-                if (userData) {
-                    try {
-                        const parsed = JSON.parse(userData);
-                        if (parsed.profileImage) profileImageSrc = parsed.profileImage;
-                    } catch {}
-                }
-            } else if (userObj.profileImage) {
-                profileImageSrc = userObj.profileImage;
-            }
-            postHeaderHtml = `
-                <div class="post-header">
-                    <img src="${profileImageSrc}" alt="User Avatar" class="post-avatar">
-                    <span class="post-username">${post.username}</span>
-                    <span class="post-role">(${post.role === 'admin' ? 'مدیر' : 'کاربر'})</span>
-                </div>
-            `;
+function updateUIForAuthState(user) {
+    if (user) {
+        // User is signed in
+        loginNavButton.style.display = 'none';
+        profileUsername.textContent = user.displayName || user.email;
+        profileRole.textContent = 'کاربر';
+        
+        // Show admin features if user is admin
+        if (user.email === 'admin@ketabgard.com') {
+            profileRole.textContent = 'مدیر';
+            document.querySelectorAll('.admin-only').forEach(el => {
+                el.style.display = 'block';
+            });
         }
+    } else {
+        // User is signed out
+        loginNavButton.style.display = 'block';
+        profileUsername.textContent = 'کاربر کتاب‌گرد';
+        profileRole.textContent = 'کاربر';
+        
+        // Hide admin features
+        document.querySelectorAll('.admin-only').forEach(el => {
+            el.style.display = 'none';
+        });
+    }
+}
 
-        const likedByCurrentUser = currentUser && users.find(u => u.username === currentUser.username)?.likedPosts.has(post.id);
-        const likeButtonClass = likedByCurrentUser ? 'action-button like-button liked' : 'action-button like-button';
+async function handleAuth(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const isRegistering = e.target.querySelector('button[type="submit"]').textContent === 'ثبت نام';
+    
+    try {
+        if (isRegistering) {
+            // Register new user
+            const userCredential = await createUserWithEmailAndPassword(
+                window.firebase.auth, 
+                username + '@ketabgard.com', 
+                password
+            );
+            
+            await updateProfile(userCredential.user, { displayName: username });
+            
+            // Create user document in Firestore
+            await addDoc(collection(window.firebase.db, 'users'), {
+                uid: userCredential.user.uid,
+                username: username,
+                email: userCredential.user.email,
+                bio: 'علاقه‌مند به ادبیات کلاسیک و فلسفه',
+                role: 'کاربر',
+                createdAt: serverTimestamp()
+            });
+            
+            alert('حساب کاربری با موفقیت ایجاد شد!');
+        } else {
+            // Sign in existing user
+            await signInWithEmailAndPassword(
+                window.firebase.auth, 
+                username + '@ketabgard.com', 
+                password
+            );
+            alert('ورود موفقیت‌آمیز بود!');
+        }
+        
+        // Clear form and switch to feed
+        authForm.reset();
+        document.getElementById('feed-screen').classList.add('active');
+        document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+        document.querySelector('[data-target="feed-screen"]').classList.add('active');
+        
+    } catch (error) {
+        console.error('Auth error:', error);
+        alert('خطا: ' + getPersianErrorMessage(error.code));
+    }
+}
 
-        postCard.innerHTML = `
-            ${postHeaderHtml}
+function getPersianErrorMessage(errorCode) {
+    const errorMessages = {
+        'auth/user-not-found': 'کاربری با این نام کاربری یافت نشد',
+        'auth/wrong-password': 'رمز عبور اشتباه است',
+        'auth/email-already-in-use': 'این نام کاربری قبلاً استفاده شده است',
+        'auth/weak-password': 'رمز عبور باید حداقل ۶ کاراکتر باشد',
+        'auth/invalid-email': 'نام کاربری نامعتبر است'
+    };
+    return errorMessages[errorCode] || 'خطای نامشخص';
+}
+
+async function handleLogout() {
+    try {
+        await signOut(window.firebase.auth);
+        alert('خروج موفقیت‌آمیز بود!');
+    } catch (error) {
+        console.error('Logout error:', error);
+        alert('خطا در خروج');
+    }
+}
+
+async function handleNewPost(e) {
+    e.preventDefault();
+    
+    if (!currentUser) {
+        alert('لطفاً ابتدا وارد شوید');
+        return;
+    }
+    
+    const bookTitle = document.getElementById('book-title').value;
+    const bookAuthor = document.getElementById('book-author').value;
+    const bookQuote = document.getElementById('book-quote').value;
+    const bookCoverFile = document.getElementById('book-cover-upload').files[0];
+    
+    try {
+        let bookCoverURL = null;
+        
+        if (bookCoverFile) {
+            const storageRef = ref(window.firebase.storage, `book-covers/${Date.now()}_${bookCoverFile.name}`);
+            const snapshot = await uploadBytes(storageRef, bookCoverFile);
+            bookCoverURL = await getDownloadURL(snapshot.ref);
+        }
+        
+        const postData = {
+            bookTitle,
+            bookAuthor,
+            bookQuote,
+            bookCoverURL,
+            userId: currentUser.uid,
+            username: currentUser.displayName || currentUser.email,
+            userRole: currentUser.email === 'admin@ketabgard.com' ? 'مدیر' : 'کاربر',
+            likes: 0,
+            timestamp: serverTimestamp()
+        };
+        
+        await addDoc(collection(window.firebase.db, 'posts'), postData);
+        
+        // Clear form
+        newPostForm.reset();
+        document.getElementById('book-cover-preview').style.display = 'none';
+        
+        // Switch to feed
+        document.getElementById('feed-screen').classList.add('active');
+        document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+        document.querySelector('[data-target="feed-screen"]').classList.add('active');
+        
+        alert('پست با موفقیت منتشر شد!');
+        
+    } catch (error) {
+        console.error('Error creating post:', error);
+        alert('خطا در ایجاد پست');
+    }
+}
+
+async function loadPosts() {
+    try {
+        const q = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
+        
+        onSnapshot(q, (snapshot) => {
+            posts = [];
+            snapshot.forEach((doc) => {
+                posts.push({ id: doc.id, ...doc.data() });
+            });
+            renderPosts();
+        });
+    } catch (error) {
+        console.error('Error loading posts:', error);
+    }
+}
+
+async function loadUserProfile(user) {
+    try {
+        const usersRef = collection(window.firebase.db, 'users');
+        const q = query(usersRef, orderBy('uid'), where('uid', '==', user.uid));
+        const snapshot = await getDocs(q);
+        
+        if (!snapshot.empty) {
+            const userData = snapshot.docs[0].data();
+            profileBio.textContent = userData.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
+            profileRole.textContent = userData.role || 'کاربر';
+        }
+    } catch (error) {
+        console.error('Error loading user profile:', error);
+    }
+}
+
+async function loadUserPosts() {
+    if (!currentUser) return;
+    
+    try {
+        const q = query(
+            collection(window.firebase.db, 'posts'), 
+            orderBy('timestamp', 'desc')
+        );
+        
+        onSnapshot(q, (snapshot) => {
+            userPosts = [];
+            snapshot.forEach((doc) => {
+                const post = { id: doc.id, ...doc.data() };
+                if (post.userId === currentUser.uid) {
+                    userPosts.push(post);
+                }
+            });
+            renderUserPosts();
+        });
+    } catch (error) {
+        console.error('Error loading user posts:', error);
+    }
+}
+
+function renderPosts() {
+    if (!postsList) return;
+    
+    postsList.innerHTML = posts.map(post => `
+        <div class="post-card" data-post-id="${post.id}">
+            <div class="post-header">
+                <img src="${post.userPhotoURL || 'avatar.png'}" alt="User Avatar" class="post-avatar">
+                <span class="post-username">${post.username}</span>
+                <span class="post-role">(${post.userRole})</span>
+            </div>
             <div class="post-content">
-                ${post.coverSrc ? `<img src="${post.coverSrc}" alt="Book Cover" class="book-cover">` : ''}
-                <h3 class="book-title">${post.title}</h3>
-                <p class="book-author">نویسنده: ${post.author}</p>
-                <blockquote class="book-quote">"${post.quote}"</blockquote>
+                <img src="${post.bookCoverURL || 'book_cover_example.png'}" alt="Book Cover" class="book-cover">
+                <h3 class="book-title">${post.bookTitle}</h3>
+                <p class="book-author">نویسنده: ${post.bookAuthor}</p>
+                <blockquote class="book-quote">"${post.bookQuote}"</blockquote>
             </div>
             <div class="post-actions">
-                <button class="${likeButtonClass}"><span class="material-icons">thumb_up</span> لایک (<span class="like-count">${post.likes}</span>)</button>
-                <button class="action-button comment-toggle-button"><span class="material-icons">comment</span> کامنت</button>
-                <button class="action-button delete-post-button admin-only" style="display: none;"><span class="material-icons">delete</span> حذف</button>
+                <button class="action-button like-button" onclick="handleLike('${post.id}')">
+                    <span class="material-icons">thumb_up</span> لایک (<span class="like-count">${post.likes || 0}</span>)
+                </button>
+                <button class="action-button comment-toggle-button" onclick="toggleComments('${post.id}')">
+                    <span class="material-icons">comment</span> کامنت
+                </button>
+                ${currentUser && (currentUser.email === 'admin@ketabgard.com' || post.userId === currentUser.uid) ? 
+                    `<button class="action-button delete-post-button admin-only" onclick="deletePost('${post.id}')">
+                        <span class="material-icons">delete</span> حذف
+                    </button>` : ''
+                }
             </div>
-            <div class="comments-section" style="display: none;">
-                ${post.comments.map(comment => `
-                    <div class="comment" data-comment-id="${comment.id}">
-                        <span class="comment-author">${comment.author}:</span> <span class="comment-text">${comment.text}</span>
-                        <button class="delete-comment-button admin-only" style="display: none;"><span class="material-icons">close</span></button>
-                    </div>
-                `).join('')}
-                <form class="add-comment-form">
-                    <input type="text" placeholder="نظر خود را بنویسید..." class="comment-input">
+            <div class="comments-section" id="comments-${post.id}" style="display: none;">
+                <form class="add-comment-form" onsubmit="addComment(event, '${post.id}')">
+                    <input type="text" placeholder="نظر خود را بنویسید..." class="comment-input" required>
                     <button type="submit">ارسال</button>
                 </form>
             </div>
-        `;
+        </div>
+    `).join('');
+}
 
-        // Add event listeners for new elements
-        postCard.querySelector('.like-button').addEventListener('click', (e) => handleLike(e, post.id));
-        postCard.querySelector('.comment-toggle-button').addEventListener('click', (e) => toggleComments(e));
-        postCard.querySelector('.add-comment-form').addEventListener('submit', (e) => addComment(e, post.id));
-        const deletePostButton = postCard.querySelector('.delete-post-button');
-        if (deletePostButton) {
-            deletePostButton.addEventListener('click', () => deletePost(post.id));
-        }
-        postCard.querySelectorAll('.delete-comment-button').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const commentEl = e.target.closest('.comment');
-                if (commentEl) {
-                    const commentId = parseInt(commentEl.dataset.commentId);
-                    deleteComment(post.id, commentId);
-                }
-            });
-        });
+function renderUserPosts() {
+    if (!userPostsList) return;
+    
+    userPostsList.innerHTML = userPosts.map(post => `
+        <div class="post-card" data-post-id="${post.id}">
+            <div class="post-content">
+                <img src="${post.bookCoverURL || 'book_cover_example_2.png'}" alt="Book Cover" class="book-cover">
+                <h3 class="book-title">${post.bookTitle}</h3>
+                <p class="book-author">نویسنده: ${post.bookAuthor}</p>
+                <blockquote class="book-quote">"${post.bookQuote}"</blockquote>
+            </div>
+            <div class="post-actions">
+                <button class="action-button like-button" onclick="handleLike('${post.id}')">
+                    <span class="material-icons">thumb_up</span> لایک (<span class="like-count">${post.likes || 0}</span>)
+                </button>
+                <button class="action-button comment-toggle-button" onclick="toggleComments('${post.id}')">
+                    <span class="material-icons">comment</span> کامنت
+                </button>
+                <button class="action-button delete-post-button" onclick="deletePost('${post.id}')">
+                    <span class="material-icons">delete</span> حذف
+                </button>
+            </div>
+            <div class="comments-section" id="comments-${post.id}" style="display: none;">
+                <form class="add-comment-form" onsubmit="addComment(event, '${post.id}')">
+                    <input type="text" placeholder="نظر خود را بنویسید..." class="comment-input" required>
+                    <button type="submit">ارسال</button>
+                </form>
+            </div>
+        </div>
+    `).join('');
+}
 
-        return postCard;
-    };
-
-    const handleLike = (e, postId) => {
-        if (!currentUser) {
-            alert('برای لایک کردن باید وارد شوید.');
-            showScreen('login-screen');
-            return;
-        }
-
-        const user = users.find(u => u.username === currentUser.username);
+// Global functions for event handlers
+window.handleLike = async function(postId) {
+    if (!currentUser) {
+        alert('لطفاً ابتدا وارد شوید');
+        return;
+    }
+    
+    try {
+        const postRef = doc(window.firebase.db, 'posts', postId);
         const post = posts.find(p => p.id === postId);
-
-        if (user && post) {
-            if (user.likedPosts.has(postId)) {
-                // User already liked, so unlike
-                user.likedPosts.delete(postId);
-                post.likes--;
-                e.currentTarget.classList.remove('liked');
-            } else {
-                // User has not liked, so like
-                user.likedPosts.add(postId);
-                post.likes++;
-                e.currentTarget.classList.add('liked');
-            }
-            e.currentTarget.querySelector('.like-count').textContent = post.likes;
-        }
-    };
-
-    const toggleComments = (e) => {
-        const commentsSection = e.currentTarget.closest('.post-card').querySelector('.comments-section');
-        if (commentsSection) {
-            commentsSection.style.display = commentsSection.style.display === 'none' ? 'block' : 'none';
-        }
-    };
-
-    const addComment = (e, postId) => {
-        e.preventDefault();
-        if (!currentUser) {
-            alert('برای ارسال کامنت باید وارد شوید.');
-            showScreen('login-screen');
-            return;
-        }
-        const commentInput = e.target.querySelector('.comment-input');
-        const commentText = commentInput.value.trim();
-        if (commentText) {
-            const post = posts.find(p => p.id === postId);
-            if (post) {
-                const commentId = post.comments.length > 0 ? Math.max(...post.comments.map(c => c.id)) + 1 : 1;
-                post.comments.push({ id: commentId, author: currentUser.username, role: currentUser.role, text: commentText });
-                renderPosts(); // Re-render to update comments
-                commentInput.value = '';
-            }
-        }
-    };
-
-    const deletePost = (postId) => {
-        if (!currentUser || currentUser.role !== 'admin') {
-            alert('شما دسترسی حذف پست را ندارید.');
-            return;
-        }
-        if (confirm('آیا مطمئن هستید که می‌خواهید این پست را حذف کنید؟')) {
-            posts = posts.filter(post => post.id !== postId);
-            renderPosts();
-        }
-    };
-
-    const deleteComment = (postId, commentId) => {
-        if (!currentUser || currentUser.role !== 'admin') {
-            alert('شما دسترسی حذف کامنت را ندارید.');
-            return;
-        }
-        if (confirm('آیا مطمئن هستید که می‌خواهید این کامنت را حذف کنید؟')) {
-            const post = posts.find(p => p.id === postId);
-            if (post) {
-                post.comments = post.comments.filter(comment => comment.id !== commentId);
-                renderPosts();
-            }
-        }
-    };
-
-    // Auth Form Submission (Login/Register)
-    authForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const usernameInput = document.getElementById('username').value;
-        const passwordInput = document.getElementById('password').value;
-
-        const foundUser = users.find(u => u.username === usernameInput && u.password === passwordInput);
-
-        if (foundUser) {
-            currentUser = { username: foundUser.username, role: foundUser.role, bio: foundUser.bio };
-            alert(`خوش آمدید، ${currentUser.username}!`);
-            showScreen('feed-screen');
-        } else {
-            alert('نام کاربری یا رمز عبور اشتباه است.');
-        }
-    });
-
-    // Profile image upload preview for registration
-    const profileImageUpload = document.getElementById('profile-image-upload');
-    const profileImagePreview = document.getElementById('profile-image-preview');
-    const changeProfileImageButton = document.getElementById('change-profile-image-button');
-    const profileImageUploadProfile = document.getElementById('profile-image-upload-profile');
-    const profileImagePreviewProfile = document.getElementById('profile-image-preview-profile');
-    const profilePicture = document.querySelector('.profile-picture');
-
-    if (profileImageUpload) {
-        profileImageUpload.addEventListener('change', function() {
-            const file = this.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    profileImagePreview.src = e.target.result;
-                    profileImagePreview.style.display = 'block';
-                };
-                reader.readAsDataURL(file);
-            } else {
-                profileImagePreview.src = '#';
-                profileImagePreview.style.display = 'none';
-            }
-        });
+        const newLikes = (post.likes || 0) + 1;
+        
+        await updateDoc(postRef, { likes: newLikes });
+    } catch (error) {
+        console.error('Error liking post:', error);
+        alert('خطا در لایک کردن');
     }
+};
 
-    if (changeProfileImageButton && profileImageUploadProfile) {
-        changeProfileImageButton.addEventListener('click', () => {
-            profileImageUploadProfile.click();
-        });
-        profileImageUploadProfile.addEventListener('change', function() {
-            const file = this.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    profileImagePreviewProfile.src = e.target.result;
-                    profileImagePreviewProfile.style.display = 'block';
-                    if (profilePicture) {
-                        profilePicture.src = e.target.result;
-                    }
-                    // ذخیره عکس در localStorage و users array
-                    if (currentUser) {
-                        const userData = localStorage.getItem('user_' + currentUser.username);
-                        let userObj = userData ? JSON.parse(userData) : {};
-                        userObj.profileImage = e.target.result;
-                        localStorage.setItem('user_' + currentUser.username, JSON.stringify(userObj));
-                        // به‌روزرسانی در users array
-                        const userInArray = users.find(u => u.username === currentUser.username);
-                        if (userInArray) {
-                            userInArray.profileImage = e.target.result;
-                        }
-                    }
-                };
-                reader.readAsDataURL(file);
-            } else {
-                profileImagePreviewProfile.src = '#';
-                profileImagePreviewProfile.style.display = 'none';
-            }
-        });
+window.toggleComments = function(postId) {
+    const commentsSection = document.getElementById(`comments-${postId}`);
+    if (commentsSection) {
+        commentsSection.style.display = commentsSection.style.display === 'none' ? 'block' : 'none';
     }
+};
 
-    registerButton.addEventListener('click', () => {
-        const usernameInput = document.getElementById('username').value;
-        const passwordInput = document.getElementById('password').value;
-        let profileImageData = '';
-        if (profileImageUpload && profileImageUpload.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                profileImageData = e.target.result;
-                finishRegister();
-            };
-            reader.readAsDataURL(profileImageUpload.files[0]);
-        } else {
-            finishRegister();
-        }
-        function finishRegister() {
-            if (usernameInput.trim() === '' || passwordInput.trim() === '') {
-                alert('نام کاربری و رمز عبور نمی‌توانند خالی باشند.');
-                return;
-            }
-            if (users.some(u => u.username === usernameInput)) {
-                alert('این نام کاربری قبلاً گرفته شده است.');
-            } else {
-                users.push({ username: usernameInput, password: passwordInput, role: 'user', bio: 'عضو جدید کتاب‌گرد هستم!', likedPosts: new Set(), profileImage: profileImageData });
-                // ذخیره در localStorage
-                localStorage.setItem('user_' + usernameInput, JSON.stringify({ username: usernameInput, password: passwordInput, role: 'user', bio: 'عضو جدید کتاب‌گرد هستم!', profileImage: profileImageData }));
-                alert('ثبت نام با موفقیت انجام شد. اکنون می‌توانید وارد شوید.');
-                authForm.reset();
-                profileImagePreview.src = '#';
-                profileImagePreview.style.display = 'none';
-            }
-        }
-    });
+window.addComment = async function(e, postId) {
+    e.preventDefault();
+    
+    if (!currentUser) {
+        alert('لطفاً ابتدا وارد شوید');
+        return;
+    }
+    
+    const commentInput = e.target.querySelector('.comment-input');
+    const commentText = commentInput.value.trim();
+    
+    if (!commentText) return;
+    
+    try {
+        const commentData = {
+            postId,
+            userId: currentUser.uid,
+            username: currentUser.displayName || currentUser.email,
+            text: commentText,
+            timestamp: serverTimestamp()
+        };
+        
+        await addDoc(collection(window.firebase.db, 'comments'), commentData);
+        commentInput.value = '';
+        
+    } catch (error) {
+        console.error('Error adding comment:', error);
+        alert('خطا در افزودن کامنت');
+    }
+};
 
-    logoutButton.addEventListener('click', () => {
-        currentUser = null;
-        alert('از حساب خود خارج شدید.');
-        showScreen('login-screen'); // Go to login screen after logout
-    });
-
-    // Edit Bio functionality
-    editBioButton.addEventListener('click', () => {
-        if (!currentUser) return; // Should not happen if button is hidden when not logged in
-
-        if (profileBio.querySelector('textarea')) {
-            // If already in edit mode, save changes
-            const newBio = profileBio.querySelector('textarea').value.trim();
-            currentUser.bio = newBio;
-            const userInArray = users.find(u => u.username === currentUser.username);
-            if (userInArray) {
-                userInArray.bio = newBio;
-            }
-            profileBio.innerHTML = newBio;
-            editBioButton.innerHTML = '<span class="material-icons">edit</span> ویرایش بیو';
-        } else {
-            // Enter edit mode
-            const currentBio = profileBio.textContent;
-            profileBio.innerHTML = `<textarea class="bio-edit-input">${currentBio}</textarea>`;
-            profileBio.querySelector('textarea').focus();
-            editBioButton.innerHTML = '<span class="material-icons">done</span> ذخیره بیو';
-        }
-    });
-
-    // Initial render and screen load
-    renderPosts();
-    showScreen('login-screen'); // Start on the login screen
-
-    // هنگام ورود، عکس پروفایل را نمایش بده
-    if (currentUser) {
-        const userData = localStorage.getItem('user_' + currentUser.username);
-        if (userData) {
-            const userObj = JSON.parse(userData);
-            if (userObj.profileImage) {
-                if (profilePicture) {
-                    profilePicture.src = userObj.profileImage;
-                }
-            }
+window.deletePost = async function(postId) {
+    if (!currentUser) return;
+    
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    
+    if (post.userId !== currentUser.uid && currentUser.email !== 'admin@ketabgard.com') {
+        alert('شما مجاز به حذف این پست نیستید');
+        return;
+    }
+    
+    if (confirm('آیا مطمئن هستید که می‌خواهید این پست را حذف کنید؟')) {
+        try {
+            await deleteDoc(doc(window.firebase.db, 'posts', postId));
+            alert('پست با موفقیت حذف شد!');
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            alert('خطا در حذف پست');
         }
     }
-});
+};
+
+async function updateUserBio(newBio) {
+    if (!currentUser) return;
+    
+    try {
+        // Find user document
+        const usersRef = collection(window.firebase.db, 'users');
+        const q = query(usersRef, where('uid', '==', currentUser.uid));
+        const snapshot = await getDocs(q);
+        
+        if (!snapshot.empty) {
+            const userDoc = snapshot.docs[0];
+            await updateDoc(doc(window.firebase.db, 'users', userDoc.id), { bio: newBio });
+            profileBio.textContent = newBio;
+            alert('بیو با موفقیت به‌روزرسانی شد!');
+        } else {
+            // Create user document if it doesn't exist
+            await addDoc(collection(window.firebase.db, 'users'), {
+                uid: currentUser.uid,
+                username: currentUser.displayName || currentUser.email,
+                email: currentUser.email,
+                bio: newBio,
+                role: 'کاربر',
+                createdAt: serverTimestamp()
+            });
+            profileBio.textContent = newBio;
+            alert('بیو با موفقیت به‌روزرسانی شد!');
+        }
+    } catch (error) {
+        console.error('Error updating bio:', error);
+        alert('خطا در به‌روزرسانی بیو');
+    }
+}
