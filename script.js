@@ -240,9 +240,30 @@ document.addEventListener('DOMContentLoaded', () => {
             let bookCoverURL = '';
             
             if (bookCoverFile) {
-                const storageRef = ref(window.firebase.storage, `book-covers/${Date.now()}_${bookCoverFile.name}`);
-                const snapshot = await uploadBytes(storageRef, bookCoverFile);
-                bookCoverURL = await getDownloadURL(snapshot.ref);
+                try {
+                    // Try Firebase Storage first
+                    const storageRef = ref(window.firebase.storage, `book-covers/${Date.now()}_${bookCoverFile.name}`);
+                    const snapshot = await uploadBytes(storageRef, bookCoverFile);
+                    bookCoverURL = await getDownloadURL(snapshot.ref);
+                } catch (storageError) {
+                    console.error('Error uploading image to Firebase Storage:', storageError);
+                    
+                    // Fallback: Convert to base64 and store in Firestore
+                    try {
+                        const reader = new FileReader();
+                        const base64Promise = new Promise((resolve, reject) => {
+                            reader.onload = () => resolve(reader.result);
+                            reader.onerror = reject;
+                        });
+                        reader.readAsDataURL(bookCoverFile);
+                        bookCoverURL = await base64Promise;
+                        console.log('Image converted to base64 as fallback');
+                    } catch (base64Error) {
+                        console.error('Error converting image to base64:', base64Error);
+                        alert('خطا در پردازش تصویر. لطفاً بدون تصویر پست را ارسال کنید.');
+                        return;
+                    }
+                }
             }
 
             const postData = {
@@ -624,6 +645,65 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Comment data for Firebase:', commentData);
             const docRef = await addDoc(collection(window.firebase.db, 'comments'), commentData);
             console.log('Comment saved with ID:', docRef.id);
+            
+            // Replace temp comment with real comment
+            if (post) {
+                // Remove temp comment from local state
+                post.comments = post.comments.filter(c => c.id !== tempCommentId);
+                
+                // Add real comment
+                const realComment = {
+                    id: docRef.id,
+                    postId,
+                    userId: currentUser.uid,
+                    username: currentUser.displayName || currentUser.email,
+                    text: commentText,
+                    timestamp: commentData.timestamp?.toDate ? commentData.timestamp.toDate() : commentData.timestamp
+                };
+                post.comments.push(realComment);
+                
+                // Update UI
+                const postCard = document.querySelector(`[data-post-id="${postId}"]`);
+                if (postCard) {
+                    // Remove temp comment from UI
+                    const tempCommentElement = postCard.querySelector(`[data-comment-id="${tempCommentId}"]`);
+                    if (tempCommentElement) {
+                        tempCommentElement.remove();
+                    }
+                    
+                    // Add real comment to UI
+                    const commentsList = postCard.querySelector('.comments-list');
+                    if (commentsList) {
+                        const commentElement = document.createElement('div');
+                        commentElement.className = 'comment';
+                        commentElement.dataset.commentId = realComment.id;
+                        commentElement.innerHTML = `
+                            <div class="comment-header">
+                                <span class="comment-author">${realComment.username}</span>
+                                <span class="comment-time">${realComment.timestamp?.toLocaleString ? realComment.timestamp.toLocaleString('fa-IR') : ''}</span>
+                            </div>
+                            <div class="comment-text">${realComment.text}</div>
+                            <button class="delete-comment-button">
+                                <span class="material-icons">close</span>
+                            </button>
+                        `;
+                        
+                        // Add event listener for delete button
+                        const deleteButton = commentElement.querySelector('.delete-comment-button');
+                        if (deleteButton) {
+                            deleteButton.addEventListener('click', (e) => {
+                                const commentEl = e.target.closest('.comment');
+                                if (commentEl) {
+                                    const commentId = commentEl.dataset.commentId;
+                                    deleteComment(post.id, commentId);
+                                }
+                            });
+                        }
+                        
+                        commentsList.appendChild(commentElement);
+                    }
+                }
+            }
             
             // Add animation
             const commentButton = e.target.closest('.post-card').querySelector('.comment-toggle-button');
@@ -1080,122 +1160,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Starting to load posts and comments for all users...');
             loadPostsAndComments();
             
-            // Set up real-time comments listener for new comments (without orderBy to avoid index requirement)
-            const commentsQuery = query(collection(window.firebase.db, 'comments'));
-            onSnapshot(commentsQuery, (snapshot) => {
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === 'added') {
-                        const newComment = { 
-                            id: change.doc.id, 
-                            ...change.doc.data(),
-                            timestamp: change.doc.data().timestamp?.toDate ? change.doc.data().timestamp.toDate() : change.doc.data().timestamp
-                        };
-                        
-                        // Update the corresponding post's comments
-                        const post = posts.find(p => p.id === newComment.postId);
-                        if (post) {
-                            if (!post.comments) post.comments = [];
-                            
-                            // Check if comment already exists (including temp comments)
-                            const existingComment = post.comments.find(c => 
-                                c.id === newComment.id || 
-                                (c.id.startsWith('temp-') && c.text === newComment.text && c.userId === newComment.userId)
-                            );
-                            
-                            if (!existingComment) {
-                                // Remove any temp comment with same text and user
-                                post.comments = post.comments.filter(c => 
-                                    !(c.id.startsWith('temp-') && c.text === newComment.text && c.userId === newComment.userId)
-                                );
-                                
-                                post.comments.push(newComment);
-                                // Sort comments by timestamp
-                                post.comments.sort((a, b) => {
-                                    const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
-                                    const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
-                                    return timeA - timeB;
-                                });
-                                console.log(`Real-time: Added new comment ${newComment.id} to post ${newComment.postId}`);
-                                
-                                // Update UI if the post is currently visible
-                                const postCard = document.querySelector(`[data-post-id="${post.id}"]`);
-                                if (postCard) {
-                                    // Remove temp comment from UI if exists
-                                    const tempCommentElement = postCard.querySelector(`[data-comment-id^="temp-"]`);
-                                    if (tempCommentElement) {
-                                        tempCommentElement.remove();
-                                    }
-                                    
-                                    const commentsList = postCard.querySelector('.comments-list');
-                                    if (commentsList) {
-                                        const commentElement = document.createElement('div');
-                                        commentElement.className = 'comment';
-                                        commentElement.dataset.commentId = newComment.id;
-                                        
-                                        // Check if user can delete this comment
-                                        const canDeleteComment = currentUser && (
-                                            currentUser.email === 'ketabbase@ketabgard.com' || 
-                                            userProfile?.role === 'admin' || 
-                                            newComment.userId === currentUser.uid
-                                        );
-                                        
-                                        commentElement.innerHTML = `
-                                            <div class="comment-header">
-                                                <span class="comment-author">${newComment.username}</span>
-                                                <span class="comment-time">${newComment.timestamp?.toLocaleString ? newComment.timestamp.toLocaleString('fa-IR') : ''}</span>
-                                            </div>
-                                            <div class="comment-text">${newComment.text}</div>
-                                            ${canDeleteComment ? 
-                                                `<button class="delete-comment-button">
-                                                    <span class="material-icons">close</span>
-                                                </button>` : ''
-                                            }
-                                        `;
-                                        
-                                        // Add event listener for delete button
-                                        const deleteButton = commentElement.querySelector('.delete-comment-button');
-                                        if (deleteButton) {
-                                            deleteButton.addEventListener('click', (e) => {
-                                                const commentEl = e.target.closest('.comment');
-                                                if (commentEl) {
-                                                    const commentId = commentEl.dataset.commentId;
-                                                    deleteComment(post.id, commentId);
-                                                }
-                                            });
-                                        }
-                                        
-                                        commentsList.appendChild(commentElement);
-                                        
-                                        // Update comment count
-                                        const commentButton = postCard.querySelector('.comment-toggle-button');
-                                        commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${post.comments.length})`;
-                                    }
-                                }
-                            }
-                        }
-                    } else if (change.type === 'removed') {
-                        const removedComment = { id: change.doc.id, ...change.doc.data() };
-                        const post = posts.find(p => p.id === removedComment.postId);
-                        if (post && post.comments) {
-                            post.comments = post.comments.filter(c => c.id !== removedComment.id);
-                            console.log(`Real-time: Removed comment ${removedComment.id} from post ${removedComment.postId}`);
-                            
-                            // Update UI if the post is currently visible
-                            const postCard = document.querySelector(`[data-post-id="${post.id}"]`);
-                            if (postCard) {
-                                const commentElement = postCard.querySelector(`[data-comment-id="${removedComment.id}"]`);
-                                if (commentElement) {
-                                    commentElement.remove();
-                                    
-                                    // Update comment count
-                                    const commentButton = postCard.querySelector('.comment-toggle-button');
-                                    commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${post.comments.length})`;
-                                }
-                            }
-                        }
-                    }
-                });
-            });
+            // Real-time comments listener disabled to prevent duplicates
+            // Comments will be loaded through loadPostsAndComments function
+            console.log('Real-time comments listener disabled to prevent duplicates');
         } else {
             console.log('Firebase not ready yet, retrying in 100ms...');
             setTimeout(startLoadingPosts, 100);
