@@ -45,6 +45,8 @@ const postsList = document.querySelector('.posts-list');
 const userPostsList = document.querySelector('.user-posts-list');
 
 // Initialize app when DOM is loaded
+// Add null check for all event listeners
+
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
     setupEventListeners();
@@ -57,107 +59,124 @@ function initializeApp() {
     const screens = document.querySelectorAll('.screen');
 
     navButtons.forEach(button => {
+        if (!button) return;
         button.addEventListener('click', () => {
             const target = button.getAttribute('data-target');
-            
             // Update active nav button
             navButtons.forEach(btn => {
                 if (btn) btn.classList.remove('active');
             });
             if (button) button.classList.add('active');
-            
             // Show target screen
-            screens.forEach(screen => screen.classList.remove('active'));
-            document.getElementById(target + '-screen').classList.add('active');
+            screens.forEach(screen => {
+                if (screen) screen.classList.remove('active');
+            });
+            const targetScreen = document.getElementById(target + '-screen');
+            if (targetScreen) targetScreen.classList.add('active');
         });
     });
 
     // Add post button
-    addPostButton.addEventListener('click', () => {
-        screens.forEach(screen => screen.classList.remove('active'));
-        document.getElementById('add-post-screen').classList.add('active');
-    });
+    if (addPostButton) {
+        addPostButton.addEventListener('click', () => {
+            screens.forEach(screen => {
+                if (screen) screen.classList.remove('active');
+            });
+            const addPostScreen = document.getElementById('add-post-screen');
+            if (addPostScreen) addPostScreen.classList.add('active');
+        });
+    }
 
     // Cancel post button
-    document.getElementById('cancel-post-button').addEventListener('click', () => {
-        screens.forEach(screen => screen.classList.remove('active'));
-        document.getElementById('feed-screen').classList.add('active');
-        navButtons[0].classList.add('active');
-        navButtons.forEach(btn => btn.classList.remove('active'));
-        navButtons[0].classList.add('active');
-    });
+    const cancelPostButton = document.getElementById('cancel-post-button');
+    if (cancelPostButton) {
+        cancelPostButton.addEventListener('click', () => {
+            screens.forEach(screen => {
+                if (screen) screen.classList.remove('active');
+            });
+            const feedScreen = document.getElementById('feed-screen');
+            if (feedScreen) feedScreen.classList.add('active');
+            if (navButtons[0]) navButtons[0].classList.add('active');
+            navButtons.forEach(btn => {
+                if (btn) btn.classList.remove('active');
+            });
+            if (navButtons[0]) navButtons[0].classList.add('active');
+        });
+    }
 
     // Book cover preview
     const bookCoverUpload = document.getElementById('book-cover-upload');
     const bookCoverPreview = document.getElementById('book-cover-preview');
-    
-    bookCoverUpload.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                bookCoverPreview.src = e.target.result;
-                bookCoverPreview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
-        }
-    });
+    if (bookCoverUpload && bookCoverPreview) {
+        bookCoverUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    bookCoverPreview.src = e.target.result;
+                    bookCoverPreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
 
     // Profile image upload
     const profileImageUpload = document.getElementById('profile-image-upload-profile');
     const changeProfileImageButton = document.getElementById('change-profile-image-button');
-    
-    changeProfileImageButton.addEventListener('click', () => {
-        profileImageUpload.click();
-    });
-
-    profileImageUpload.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file && currentUser) {
-            try {
-                const storageRef = ref(window.firebase.storage, `profile-images/${currentUser.uid}`);
-                const snapshot = await uploadBytes(storageRef, file);
-                const downloadURL = await getDownloadURL(snapshot.ref);
-                
-                await updateProfile(currentUser, { photoURL: downloadURL });
-                alert('عکس پروفایل با موفقیت تغییر یافت!');
-            } catch (error) {
-                console.error('Error uploading profile image:', error);
-                alert('خطا در آپلود عکس پروفایل');
+    if (changeProfileImageButton && profileImageUpload) {
+        changeProfileImageButton.addEventListener('click', () => {
+            profileImageUpload.click();
+        });
+        profileImageUpload.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file && currentUser) {
+                try {
+                    const storageRef = ref(window.firebase.storage, `profile-images/${currentUser.uid}`);
+                    const snapshot = await uploadBytes(storageRef, file);
+                    const downloadURL = await getDownloadURL(snapshot.ref);
+                    await updateProfile(currentUser, { photoURL: downloadURL });
+                    alert('عکس پروفایل با موفقیت تغییر یافت!');
+                } catch (error) {
+                    console.error('Error uploading profile image:', error);
+                    alert('خطا در آپلود عکس پروفایل');
+                }
             }
-        }
-    });
+        });
+    }
 }
 
 function setupEventListeners() {
     // Authentication form
-    authForm.addEventListener('submit', handleAuth);
-    
+    if (authForm) authForm.addEventListener('submit', handleAuth);
     // Register button
-    document.getElementById('register-button').addEventListener('click', () => {
-        const submitButton = authForm.querySelector('button[type="submit"]');
-        if (submitButton.textContent === 'ورود') {
-            submitButton.textContent = 'ثبت نام';
-            document.getElementById('register-button').textContent = 'ورود';
-        } else {
-            submitButton.textContent = 'ورود';
-            document.getElementById('register-button').textContent = 'ثبت نام';
-        }
-    });
-
+    const registerButton = document.getElementById('register-button');
+    if (registerButton && authForm) {
+        registerButton.addEventListener('click', () => {
+            const submitButton = authForm.querySelector('button[type="submit"]');
+            if (submitButton && submitButton.textContent === 'ورود') {
+                submitButton.textContent = 'ثبت نام';
+                registerButton.textContent = 'ورود';
+            } else if (submitButton) {
+                submitButton.textContent = 'ورود';
+                registerButton.textContent = 'ثبت نام';
+            }
+        });
+    }
     // Logout button
-    logoutButton.addEventListener('click', handleLogout);
-
+    if (logoutButton) logoutButton.addEventListener('click', handleLogout);
     // New post form
-    newPostForm.addEventListener('submit', handleNewPost);
-
+    if (newPostForm) newPostForm.addEventListener('submit', handleNewPost);
     // Edit bio button
-    document.querySelector('.edit-bio-button').addEventListener('click', () => {
-        const newBio = prompt('بیو جدید خود را وارد کنید:');
-        if (newBio && currentUser) {
-            updateUserBio(newBio);
-        }
-    });
+    const editBioButton = document.querySelector('.edit-bio-button');
+    if (editBioButton) {
+        editBioButton.addEventListener('click', () => {
+            const newBio = prompt('بیو جدید خود را وارد کنید:');
+            if (newBio && currentUser) {
+                updateUserBio(newBio);
+            }
+        });
+    }
 }
 
 function setupAuthStateListener() {
@@ -185,33 +204,39 @@ function updateUIForAuthState(user) {
     const screens = document.querySelectorAll('.screen');
     if (user) {
         // User is signed in
-        loginNavButton.style.display = 'none';
-        profileUsername.textContent = user.displayName || user.email;
-        profileRole.textContent = 'کاربر';
+        if (loginNavButton) loginNavButton.style.display = 'none';
+        if (profileUsername) profileUsername.textContent = user.displayName || user.email;
+        if (profileRole) profileRole.textContent = 'کاربر';
 
         // Show admin features if user is admin
         if (user.email === 'admin@ketabgard.com') {
-            profileRole.textContent = 'مدیر';
+            if (profileRole) profileRole.textContent = 'مدیر';
             document.querySelectorAll('.admin-only').forEach(el => {
-                el.style.display = 'block';
+                if (el) el.style.display = 'block';
             });
         }
         // Show feed screen
-        screens.forEach(screen => screen.classList.remove('active'));
-        document.getElementById('feed-screen').classList.add('active');
+        screens.forEach(screen => {
+            if (screen) screen.classList.remove('active');
+        });
+        const feedScreen = document.getElementById('feed-screen');
+        if (feedScreen) feedScreen.classList.add('active');
     } else {
         // User is signed out
-        loginNavButton.style.display = 'block';
-        profileUsername.textContent = 'کاربر کتاب‌گرد';
-        profileRole.textContent = 'کاربر';
+        if (loginNavButton) loginNavButton.style.display = 'block';
+        if (profileUsername) profileUsername.textContent = 'کاربر کتاب‌گرد';
+        if (profileRole) profileRole.textContent = 'کاربر';
 
         // Hide admin features
         document.querySelectorAll('.admin-only').forEach(el => {
-            el.style.display = 'none';
+            if (el) el.style.display = 'none';
         });
         // Show login screen
-        screens.forEach(screen => screen.classList.remove('active'));
-        document.getElementById('login-screen').classList.add('active');
+        screens.forEach(screen => {
+            if (screen) screen.classList.remove('active');
+        });
+        const loginScreen = document.getElementById('login-screen');
+        if (loginScreen) loginScreen.classList.add('active');
     }
 }
 
@@ -262,9 +287,13 @@ async function handleAuth(e) {
         
         // Clear form and switch to feed
         authForm.reset();
-        document.getElementById('feed-screen').classList.add('active');
-        document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
-        document.querySelector('[data-target="feed-screen"]').classList.add('active');
+        const feedScreen = document.getElementById('feed-screen');
+        if (feedScreen) feedScreen.classList.add('active');
+        screens.forEach(screen => {
+            if (screen) screen.classList.remove('active');
+        });
+        const feedNavButton = document.querySelector('[data-target="feed-screen"]');
+        if (feedNavButton) feedNavButton.classList.add('active');
         
     } catch (error) {
         console.error('Auth error details:', error);
@@ -297,26 +326,21 @@ async function handleLogout() {
 
 async function handleNewPost(e) {
     e.preventDefault();
-    
     if (!currentUser) {
         alert('لطفاً ابتدا وارد شوید');
         return;
     }
-    
-    const bookTitle = document.getElementById('book-title').value;
-    const bookAuthor = document.getElementById('book-author').value;
-    const bookQuote = document.getElementById('book-quote').value;
-    const bookCoverFile = document.getElementById('book-cover-upload').files[0];
-    
+    const bookTitle = document.getElementById('book-title')?.value;
+    const bookAuthor = document.getElementById('book-author')?.value;
+    const bookQuote = document.getElementById('book-quote')?.value;
+    const bookCoverFile = document.getElementById('book-cover-upload')?.files[0];
     try {
         let bookCoverURL = null;
-        
         if (bookCoverFile) {
             const storageRef = ref(window.firebase.storage, `book-covers/${Date.now()}_${bookCoverFile.name}`);
             const snapshot = await uploadBytes(storageRef, bookCoverFile);
             bookCoverURL = await getDownloadURL(snapshot.ref);
         }
-        
         const postData = {
             bookTitle,
             bookAuthor,
@@ -328,20 +352,22 @@ async function handleNewPost(e) {
             likes: 0,
             timestamp: serverTimestamp()
         };
-        
+        console.log('Attempting to add post:', postData);
         await addDoc(collection(window.firebase.db, 'posts'), postData);
-        
         // Clear form
-        newPostForm.reset();
-        document.getElementById('book-cover-preview').style.display = 'none';
-        
+        if (newPostForm) newPostForm.reset();
+        const bookCoverPreview = document.getElementById('book-cover-preview');
+        if (bookCoverPreview) bookCoverPreview.style.display = 'none';
         // Switch to feed
-        document.getElementById('feed-screen').classList.add('active');
-        document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
-        document.querySelector('[data-target="feed-screen"]').classList.add('active');
-        
+        const feedScreen = document.getElementById('feed-screen');
+        const screens = document.querySelectorAll('.screen');
+        if (feedScreen) feedScreen.classList.add('active');
+        screens.forEach(screen => {
+            if (screen) screen.classList.remove('active');
+        });
+        const feedNavButton = document.querySelector('[data-target="feed-screen"]');
+        if (feedNavButton) feedNavButton.classList.add('active');
         alert('پست با موفقیت منتشر شد!');
-        
     } catch (error) {
         console.error('Error creating post:', error);
         alert('خطا در ایجاد پست');
@@ -378,8 +404,8 @@ async function loadUserProfile(user) {
         
         if (!snapshot.empty) {
             const userData = snapshot.docs[0].data();
-            profileBio.textContent = userData.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
-            profileRole.textContent = userData.role || 'کاربر';
+            if (profileBio) profileBio.textContent = userData.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
+            if (profileRole) profileRole.textContent = userData.role || 'کاربر';
         }
     } catch (error) {
         console.error('Error loading user profile:', error);
@@ -572,7 +598,7 @@ async function updateUserBio(newBio) {
         if (!snapshot.empty) {
             const userDoc = snapshot.docs[0];
             await updateDoc(doc(window.firebase.db, 'users', userDoc.id), { bio: newBio });
-            profileBio.textContent = newBio;
+            if (profileBio) profileBio.textContent = newBio;
             alert('بیو با موفقیت به‌روزرسانی شد!');
         } else {
             // Create user document if it doesn't exist
@@ -584,7 +610,7 @@ async function updateUserBio(newBio) {
                 role: 'کاربر',
                 createdAt: serverTimestamp()
             });
-            profileBio.textContent = newBio;
+            if (profileBio) profileBio.textContent = newBio;
             alert('بیو با موفقیت به‌روزرسانی شد!');
         }
     } catch (error) {
