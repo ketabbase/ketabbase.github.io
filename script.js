@@ -525,6 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (postAvatar) {
             postAvatar.addEventListener('click', (e) => {
                 console.log('Post avatar clicked for user:', post.userId);
+                e.preventDefault();
                 e.stopPropagation();
                 showUserProfile(post.userId);
             });
@@ -532,6 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (postUsername) {
             postUsername.addEventListener('click', (e) => {
                 console.log('Post username clicked for user:', post.userId);
+                e.preventDefault();
                 e.stopPropagation();
                 showUserProfile(post.userId);
             });
@@ -540,6 +542,19 @@ document.addEventListener('DOMContentLoaded', () => {
         // Debug info (optional - can be removed)
         if (currentUser) {
             console.log(`Post ${post.id} - Can delete: ${canDeletePost}`);
+        }
+        
+        // Add a test button for debugging (temporary)
+        if (postAvatar) {
+            const testButton = document.createElement('button');
+            testButton.textContent = 'تست کلیک';
+            testButton.style.cssText = 'position: absolute; top: 5px; right: 5px; background: red; color: white; border: none; padding: 2px 5px; font-size: 10px; cursor: pointer;';
+            testButton.addEventListener('click', () => {
+                console.log('Test button clicked for user:', post.userId);
+                showUserProfile(post.userId);
+            });
+            postCard.style.position = 'relative';
+            postCard.appendChild(testButton);
         }
         
         const deletePostButton = postCard.querySelector('.delete-post-button');
@@ -563,6 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const userId = element.dataset.userId;
                 console.log('Comment element clicked for user:', userId);
                 if (userId) {
+                    e.preventDefault();
                     e.stopPropagation();
                     showUserProfile(userId);
                 }
@@ -574,9 +590,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const showUserProfile = async (userId) => {
         console.log('Showing profile for user:', userId);
-        
-        // Simple test alert to verify the function is called
-        alert(`کلیک روی پروفایل کاربر: ${userId}`);
         
         try {
             // Load user profile data
