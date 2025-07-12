@@ -180,12 +180,13 @@ function setupAuthStateListener() {
 }
 
 function updateUIForAuthState(user) {
+    const screens = document.querySelectorAll('.screen');
     if (user) {
         // User is signed in
         loginNavButton.style.display = 'none';
         profileUsername.textContent = user.displayName || user.email;
         profileRole.textContent = 'کاربر';
-        
+
         // Show admin features if user is admin
         if (user.email === 'admin@ketabgard.com') {
             profileRole.textContent = 'مدیر';
@@ -193,16 +194,22 @@ function updateUIForAuthState(user) {
                 el.style.display = 'block';
             });
         }
+        // Show feed screen
+        screens.forEach(screen => screen.classList.remove('active'));
+        document.getElementById('feed-screen').classList.add('active');
     } else {
         // User is signed out
         loginNavButton.style.display = 'block';
         profileUsername.textContent = 'کاربر کتاب‌گرد';
         profileRole.textContent = 'کاربر';
-        
+
         // Hide admin features
         document.querySelectorAll('.admin-only').forEach(el => {
             el.style.display = 'none';
         });
+        // Show login screen
+        screens.forEach(screen => screen.classList.remove('active'));
+        document.getElementById('login-screen').classList.add('active');
     }
 }
 
