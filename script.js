@@ -584,11 +584,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const commentText = commentInput.value.trim();
         
         console.log('Comment text:', commentText);
+        console.log('Comment input element:', commentInput);
         
         if (!commentText) return;
 
         // Clear input immediately for better UX
         commentInput.value = '';
+        commentInput.focus(); // Keep focus on input
+        console.log('Input cleared, new value:', commentInput.value);
 
         // Optimistic UI update - add comment immediately to local state
         const post = posts.find(p => p.id === postId);
@@ -732,6 +735,17 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 commentButton.style.transform = 'scale(1)';
             }, 150);
+            
+            // Double-check input is cleared
+            const currentInput = e.target.querySelector('.comment-input');
+            if (currentInput) {
+                currentInput.value = '';
+                console.log('Final check - input value:', currentInput.value);
+            }
+            
+            // Alternative method: reset the form
+            e.target.reset();
+            console.log('Form reset completed');
             
         } catch (error) {
             console.error('Error adding comment:', error);
