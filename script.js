@@ -1,30 +1,30 @@
- // Firebase imports
-import { 
-    signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, 
-    signOut, 
+// Firebase imports
+import {
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signOut,
     onAuthStateChanged,
-    updateProfile 
+    updateProfile
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-import { 
-    collection, 
-    addDoc, 
-    getDocs, 
-    doc, 
-    updateDoc, 
-    deleteDoc, 
-    query, 
-    orderBy, 
+import {
+    collection,
+    addDoc,
+    getDocs,
+    doc,
+    updateDoc,
+    deleteDoc,
+    query,
+    orderBy,
     where,
     serverTimestamp,
-    onSnapshot 
+    onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-import { 
-    ref, 
-    uploadBytes, 
-    getDownloadURL 
+import {
+    ref,
+    uploadBytes,
+    getDownloadURL
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 // Global variables
@@ -45,8 +45,6 @@ const postsList = document.querySelector('.posts-list');
 const userPostsList = document.querySelector('.user-posts-list');
 
 // Initialize app when DOM is loaded
-// Add null check for all event listeners
-
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
     setupEventListeners();
@@ -54,28 +52,25 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initializeApp() {
-    // Navigation functionality
     const navButtons = document.querySelectorAll('.nav-button');
     const screens = document.querySelectorAll('.screen');
-
-    console.log('navButtons:', navButtons);
 
     navButtons.forEach(button => {
         if (!button) return;
         button.addEventListener('click', () => {
             const target = button.getAttribute('data-target');
-            // Update active nav button
             navButtons.forEach(btn => {
                 if (btn && btn.classList) btn.classList.remove('active');
             });
             if (button && button.classList) button.classList.add('active');
-            // Show target screen
             screens.forEach(screen => {
                 if (screen && screen.classList) screen.classList.remove('active');
             });
             const targetScreen = document.getElementById(target + '-screen');
-            console.log('Clicked nav button, target:', target, 'targetScreen:', targetScreen);
             if (targetScreen && targetScreen.classList) targetScreen.classList.add('active');
+            // بارگذاری مجدد پست‌ها یا پروفایل هنگام سوییچ
+            if (target === 'feed-screen') loadPosts();
+            if (target === 'profile-screen') loadUserPosts();
         });
     });
 
@@ -83,10 +78,10 @@ function initializeApp() {
     if (addPostButton) {
         addPostButton.addEventListener('click', () => {
             screens.forEach(screen => {
-                if (screen) screen.classList.remove('active');
+                if (screen && screen.classList) screen.classList.remove('active');
             });
             const addPostScreen = document.getElementById('add-post-screen');
-            if (addPostScreen) addPostScreen.classList.add('active');
+            if (addPostScreen && addPostScreen.classList) addPostScreen.classList.add('active');
         });
     }
 
@@ -95,15 +90,15 @@ function initializeApp() {
     if (cancelPostButton) {
         cancelPostButton.addEventListener('click', () => {
             screens.forEach(screen => {
-                if (screen) screen.classList.remove('active');
+                if (screen && screen.classList) screen.classList.remove('active');
             });
             const feedScreen = document.getElementById('feed-screen');
-            if (feedScreen) feedScreen.classList.add('active');
-            if (navButtons[0]) navButtons[0].classList.add('active');
+            if (feedScreen && feedScreen.classList) feedScreen.classList.add('active');
+            const navButtons = document.querySelectorAll('.nav-button');
             navButtons.forEach(btn => {
-                if (btn) btn.classList.remove('active');
+                if (btn && btn.classList) btn.classList.remove('active');
             });
-            if (navButtons[0]) navButtons[0].classList.add('active');
+            if (navButtons[0] && navButtons[0].classList) navButtons[0].classList.add('active');
         });
     }
 
@@ -152,11 +147,12 @@ function initializeApp() {
 function setupEventListeners() {
     // Authentication form
     if (authForm) authForm.addEventListener('submit', handleAuth);
+
     // Register button
     const registerButton = document.getElementById('register-button');
     if (registerButton && authForm) {
         registerButton.addEventListener('click', () => {
-            const submitButton = authForm.querySelector('button[type="submit"]');
+            const submitButton = authForm.querySelector('button[type=\"submit\"]');
             if (submitButton && submitButton.textContent === 'ورود') {
                 submitButton.textContent = 'ثبت نام';
                 registerButton.textContent = 'ورود';
@@ -166,10 +162,13 @@ function setupEventListeners() {
             }
         });
     }
+
     // Logout button
     if (logoutButton) logoutButton.addEventListener('click', handleLogout);
+
     // New post form
     if (newPostForm) newPostForm.addEventListener('submit', handleNewPost);
+
     // Edit bio button
     const editBioButton = document.querySelector('.edit-bio-button');
     if (editBioButton) {
@@ -183,14 +182,11 @@ function setupEventListeners() {
 }
 
 function setupAuthStateListener() {
-    console.log('Setting up auth state listener...');
     onAuthStateChanged(window.firebase.auth, (user) => {
-        console.log('Auth state changed:', user ? 'User logged in' : 'User logged out');
         currentUser = user;
         updateUIForAuthState(user);
-        
+
         if (user) {
-            console.log('Loading user data for:', user.email);
             loadUserProfile(user);
             loadPosts();
             loadUserPosts();
@@ -206,67 +202,51 @@ function setupAuthStateListener() {
 function updateUIForAuthState(user) {
     const screens = document.querySelectorAll('.screen');
     if (user) {
-        // User is signed in
         if (loginNavButton) loginNavButton.style.display = 'none';
         if (profileUsername) profileUsername.textContent = user.displayName || user.email;
         if (profileRole) profileRole.textContent = 'کاربر';
 
-        // Show admin features if user is admin
         if (user.email === 'admin@ketabgard.com') {
             if (profileRole) profileRole.textContent = 'مدیر';
             document.querySelectorAll('.admin-only').forEach(el => {
                 if (el) el.style.display = 'block';
             });
         }
-        // Show feed screen
         screens.forEach(screen => {
-            if (screen) screen.classList.remove('active');
+            if (screen && screen.classList) screen.classList.remove('active');
         });
         const feedScreen = document.getElementById('feed-screen');
-        if (feedScreen) feedScreen.classList.add('active');
+        if (feedScreen && feedScreen.classList) feedScreen.classList.add('active');
     } else {
-        // User is signed out
         if (loginNavButton) loginNavButton.style.display = 'block';
         if (profileUsername) profileUsername.textContent = 'کاربر کتاب‌گرد';
         if (profileRole) profileRole.textContent = 'کاربر';
 
-        // Hide admin features
         document.querySelectorAll('.admin-only').forEach(el => {
             if (el) el.style.display = 'none';
         });
-        // Show login screen
         screens.forEach(screen => {
-            if (screen) screen.classList.remove('active');
+            if (screen && screen.classList) screen.classList.remove('active');
         });
         const loginScreen = document.getElementById('login-screen');
-        if (loginScreen) loginScreen.classList.add('active');
+        if (loginScreen && loginScreen.classList) loginScreen.classList.add('active');
     }
 }
 
 async function handleAuth(e) {
     e.preventDefault();
-    
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    const isRegistering = e.target.querySelector('button[type="submit"]').textContent === 'ثبت نام';
-    
-    console.log('Attempting auth:', isRegistering ? 'register' : 'login', 'for username:', username);
-    
+    const username = document.getElementById('username')?.value;
+    const password = document.getElementById('password')?.value;
+    const isRegistering = e.target.querySelector('button[type=\"submit\"]').textContent === 'ثبت نام';
+
     try {
         if (isRegistering) {
-            // Register new user
-            console.log('Creating user with email:', username + '@ketabgard.com');
             const userCredential = await createUserWithEmailAndPassword(
-                window.firebase.auth, 
-                username + '@ketabgard.com', 
+                window.firebase.auth,
+                username + '@ketabgard.com',
                 password
             );
-            
-            console.log('User created successfully:', userCredential.user.uid);
             await updateProfile(userCredential.user, { displayName: username });
-            
-            // Create user document in Firestore
-            console.log('Creating user document in Firestore...');
             await addDoc(collection(window.firebase.db, 'users'), {
                 uid: userCredential.user.uid,
                 username: username,
@@ -275,33 +255,25 @@ async function handleAuth(e) {
                 role: 'کاربر',
                 createdAt: serverTimestamp()
             });
-            
             alert('حساب کاربری با موفقیت ایجاد شد!');
         } else {
-            // Sign in existing user
-            console.log('Signing in user with email:', username + '@ketabgard.com');
             await signInWithEmailAndPassword(
-                window.firebase.auth, 
-                username + '@ketabgard.com', 
+                window.firebase.auth,
+                username + '@ketabgard.com',
                 password
             );
             alert('ورود موفقیت‌آمیز بود!');
         }
-        
-        // Clear form and switch to feed
-        authForm.reset();
+        if (authForm) authForm.reset();
         const feedScreen = document.getElementById('feed-screen');
-        if (feedScreen) feedScreen.classList.add('active');
+        if (feedScreen && feedScreen.classList) feedScreen.classList.add('active');
+        const screens = document.querySelectorAll('.screen');
         screens.forEach(screen => {
-            if (screen) screen.classList.remove('active');
+            if (screen && screen.classList) screen.classList.remove('active');
         });
-        const feedNavButton = document.querySelector('[data-target="feed-screen"]');
-        if (feedNavButton) feedNavButton.classList.add('active');
-        
+        const feedNavButton = document.querySelector('[data-target=\"feed-screen\"]');
+        if (feedNavButton && feedNavButton.classList) feedNavButton.classList.add('active');
     } catch (error) {
-        console.error('Auth error details:', error);
-        console.error('Error code:', error.code);
-        console.error('Error message:', error.message);
         alert('خطا: ' + getPersianErrorMessage(error.code));
     }
 }
@@ -322,7 +294,6 @@ async function handleLogout() {
         await signOut(window.firebase.auth);
         alert('خروج موفقیت‌آمیز بود!');
     } catch (error) {
-        console.error('Logout error:', error);
         alert('خطا در خروج');
     }
 }
@@ -355,75 +326,61 @@ async function handleNewPost(e) {
             likes: 0,
             timestamp: serverTimestamp()
         };
-        console.log('Attempting to add post:', postData);
         await addDoc(collection(window.firebase.db, 'posts'), postData);
-        // Clear form
         if (newPostForm) newPostForm.reset();
         const bookCoverPreview = document.getElementById('book-cover-preview');
         if (bookCoverPreview) bookCoverPreview.style.display = 'none';
-        // Switch to feed
         const feedScreen = document.getElementById('feed-screen');
+        if (feedScreen && feedScreen.classList) feedScreen.classList.add('active');
         const screens = document.querySelectorAll('.screen');
-        if (feedScreen) feedScreen.classList.add('active');
         screens.forEach(screen => {
-            if (screen) screen.classList.remove('active');
+            if (screen && screen.classList) screen.classList.remove('active');
         });
-        const feedNavButton = document.querySelector('[data-target="feed-screen"]');
-        if (feedNavButton) feedNavButton.classList.add('active');
+        const feedNavButton = document.querySelector('[data-target=\"feed-screen\"]');
+        if (feedNavButton && feedNavButton.classList) feedNavButton.classList.add('active');
         alert('پست با موفقیت منتشر شد!');
     } catch (error) {
-        console.error('Error creating post:', error);
         alert('خطا در ایجاد پست');
     }
 }
 
 async function loadPosts() {
-    console.log('Loading posts...');
     try {
         const q = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
-        console.log('Query created, setting up snapshot listener...');
-        
         onSnapshot(q, (snapshot) => {
-            console.log('Posts snapshot received, documents count:', snapshot.size);
             posts = [];
             snapshot.forEach((doc) => {
                 posts.push({ id: doc.id, ...doc.data() });
             });
-            console.log('Posts loaded:', posts.length);
             renderPosts();
-        }, (error) => {
-            console.error('Error in posts snapshot:', error);
         });
     } catch (error) {
-        console.error('Error loading posts:', error);
+        // silent
     }
 }
 
 async function loadUserProfile(user) {
     try {
         const usersRef = collection(window.firebase.db, 'users');
-        const q = query(usersRef, orderBy('uid'), where('uid', '==', user.uid));
+        const q = query(usersRef, where('uid', '==', user.uid));
         const snapshot = await getDocs(q);
-        
         if (!snapshot.empty) {
             const userData = snapshot.docs[0].data();
             if (profileBio) profileBio.textContent = userData.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
             if (profileRole) profileRole.textContent = userData.role || 'کاربر';
         }
     } catch (error) {
-        console.error('Error loading user profile:', error);
+        // silent
     }
 }
 
 async function loadUserPosts() {
     if (!currentUser) return;
-    
     try {
         const q = query(
-            collection(window.firebase.db, 'posts'), 
+            collection(window.firebase.db, 'posts'),
             orderBy('timestamp', 'desc')
         );
-        
         onSnapshot(q, (snapshot) => {
             userPosts = [];
             snapshot.forEach((doc) => {
@@ -435,13 +392,16 @@ async function loadUserPosts() {
             renderUserPosts();
         });
     } catch (error) {
-        console.error('Error loading user posts:', error);
+        // silent
     }
 }
 
 function renderPosts() {
     if (!postsList) return;
-    
+    if (posts.length === 0) {
+        postsList.innerHTML = '<div class="no-posts">هیچ پستی وجود ندارد.</div>';
+        return;
+    }
     postsList.innerHTML = posts.map(post => `
         <div class="post-card" data-post-id="${post.id}">
             <div class="post-header">
@@ -455,32 +415,16 @@ function renderPosts() {
                 <p class="book-author">نویسنده: ${post.bookAuthor}</p>
                 <blockquote class="book-quote">"${post.bookQuote}"</blockquote>
             </div>
-            <div class="post-actions">
-                <button class="action-button like-button" onclick="handleLike('${post.id}')">
-                    <span class="material-icons">thumb_up</span> لایک (<span class="like-count">${post.likes || 0}</span>)
-                </button>
-                <button class="action-button comment-toggle-button" onclick="toggleComments('${post.id}')">
-                    <span class="material-icons">comment</span> کامنت
-                </button>
-                ${currentUser && (currentUser.email === 'admin@ketabgard.com' || post.userId === currentUser.uid) ? 
-                    `<button class="action-button delete-post-button admin-only" onclick="deletePost('${post.id}')">
-                        <span class="material-icons">delete</span> حذف
-                    </button>` : ''
-                }
-            </div>
-            <div class="comments-section" id="comments-${post.id}" style="display: none;">
-                <form class="add-comment-form" onsubmit="addComment(event, '${post.id}')">
-                    <input type="text" placeholder="نظر خود را بنویسید..." class="comment-input" required>
-                    <button type="submit">ارسال</button>
-                </form>
-            </div>
         </div>
     `).join('');
 }
 
 function renderUserPosts() {
     if (!userPostsList) return;
-    
+    if (userPosts.length === 0) {
+        userPostsList.innerHTML = '<div class="no-posts">شما هنوز پستی ثبت نکرده‌اید.</div>';
+        return;
+    }
     userPostsList.innerHTML = userPosts.map(post => `
         <div class="post-card" data-post-id="${post.id}">
             <div class="post-content">
@@ -489,42 +433,21 @@ function renderUserPosts() {
                 <p class="book-author">نویسنده: ${post.bookAuthor}</p>
                 <blockquote class="book-quote">"${post.bookQuote}"</blockquote>
             </div>
-            <div class="post-actions">
-                <button class="action-button like-button" onclick="handleLike('${post.id}')">
-                    <span class="material-icons">thumb_up</span> لایک (<span class="like-count">${post.likes || 0}</span>)
-                </button>
-                <button class="action-button comment-toggle-button" onclick="toggleComments('${post.id}')">
-                    <span class="material-icons">comment</span> کامنت
-                </button>
-                <button class="action-button delete-post-button" onclick="deletePost('${post.id}')">
-                    <span class="material-icons">delete</span> حذف
-                </button>
-            </div>
-            <div class="comments-section" id="comments-${post.id}" style="display: none;">
-                <form class="add-comment-form" onsubmit="addComment(event, '${post.id}')">
-                    <input type="text" placeholder="نظر خود را بنویسید..." class="comment-input" required>
-                    <button type="submit">ارسال</button>
-                </form>
-            </div>
         </div>
     `).join('');
 }
 
-// Global functions for event handlers
 window.handleLike = async function(postId) {
     if (!currentUser) {
         alert('لطفاً ابتدا وارد شوید');
         return;
     }
-    
     try {
         const postRef = doc(window.firebase.db, 'posts', postId);
         const post = posts.find(p => p.id === postId);
         const newLikes = (post.likes || 0) + 1;
-        
         await updateDoc(postRef, { likes: newLikes });
     } catch (error) {
-        console.error('Error liking post:', error);
         alert('خطا در لایک کردن');
     }
 };
@@ -538,17 +461,13 @@ window.toggleComments = function(postId) {
 
 window.addComment = async function(e, postId) {
     e.preventDefault();
-    
     if (!currentUser) {
         alert('لطفاً ابتدا وارد شوید');
         return;
     }
-    
     const commentInput = e.target.querySelector('.comment-input');
     const commentText = commentInput.value.trim();
-    
     if (!commentText) return;
-    
     try {
         const commentData = {
             postId,
@@ -557,33 +476,26 @@ window.addComment = async function(e, postId) {
             text: commentText,
             timestamp: serverTimestamp()
         };
-        
         await addDoc(collection(window.firebase.db, 'comments'), commentData);
         commentInput.value = '';
-        
     } catch (error) {
-        console.error('Error adding comment:', error);
         alert('خطا در افزودن کامنت');
     }
 };
 
 window.deletePost = async function(postId) {
     if (!currentUser) return;
-    
     const post = posts.find(p => p.id === postId);
     if (!post) return;
-    
     if (post.userId !== currentUser.uid && currentUser.email !== 'admin@ketabgard.com') {
         alert('شما مجاز به حذف این پست نیستید');
         return;
     }
-    
     if (confirm('آیا مطمئن هستید که می‌خواهید این پست را حذف کنید؟')) {
         try {
             await deleteDoc(doc(window.firebase.db, 'posts', postId));
             alert('پست با موفقیت حذف شد!');
         } catch (error) {
-            console.error('Error deleting post:', error);
             alert('خطا در حذف پست');
         }
     }
@@ -591,20 +503,16 @@ window.deletePost = async function(postId) {
 
 async function updateUserBio(newBio) {
     if (!currentUser) return;
-    
     try {
-        // Find user document
         const usersRef = collection(window.firebase.db, 'users');
         const q = query(usersRef, where('uid', '==', currentUser.uid));
         const snapshot = await getDocs(q);
-        
         if (!snapshot.empty) {
             const userDoc = snapshot.docs[0];
             await updateDoc(doc(window.firebase.db, 'users', userDoc.id), { bio: newBio });
             if (profileBio) profileBio.textContent = newBio;
             alert('بیو با موفقیت به‌روزرسانی شد!');
         } else {
-            // Create user document if it doesn't exist
             await addDoc(collection(window.firebase.db, 'users'), {
                 uid: currentUser.uid,
                 username: currentUser.displayName || currentUser.email,
@@ -617,7 +525,6 @@ async function updateUserBio(newBio) {
             alert('بیو با موفقیت به‌روزرسانی شد!');
         }
     } catch (error) {
-        console.error('Error updating bio:', error);
         alert('خطا در به‌روزرسانی بیو');
     }
 }
