@@ -470,9 +470,9 @@ function renderPosts() {
                 <blockquote class="book-quote">"${post.bookQuote}"</blockquote>
             </div>
             <div class="post-actions">
-                <button class="action-button like-button ${post.likedBy && post.likedBy.includes(currentUser?.uid) ? 'liked' : ''}" 
+                <button class="action-button like-button ${hasUserLikedPost(post, currentUser?.uid) ? 'liked' : ''}" 
                         onclick="handleLike('${post.id}')"
-                        ${post.likedBy && post.likedBy.includes(currentUser?.uid) ? 'disabled' : ''}>
+                        ${hasUserLikedPost(post, currentUser?.uid) ? 'disabled' : ''}>
                     <span class="material-icons">thumb_up</span> لایک (<span class="like-count">${post.likes || 0}</span>)
                 </button>
                 <button class="action-button comment-toggle-button" onclick="toggleComments('${post.id}')">
@@ -527,9 +527,9 @@ function renderUserPosts() {
                 <blockquote class="book-quote">"${post.bookQuote}"</blockquote>
             </div>
             <div class="post-actions">
-                <button class="action-button like-button ${post.likedBy && post.likedBy.includes(currentUser?.uid) ? 'liked' : ''}" 
+                <button class="action-button like-button ${hasUserLikedPost(post, currentUser?.uid) ? 'liked' : ''}" 
                         onclick="handleLike('${post.id}')"
-                        ${post.likedBy && post.likedBy.includes(currentUser?.uid) ? 'disabled' : ''}>
+                        ${hasUserLikedPost(post, currentUser?.uid) ? 'disabled' : ''}>
                     <span class="material-icons">thumb_up</span> لایک (<span class="like-count">${post.likes || 0}</span>)
                 </button>
                 <button class="action-button comment-toggle-button" onclick="toggleComments('${post.id}')">
@@ -549,9 +549,16 @@ function renderUserPosts() {
     `).join('');
 }
 
+// Helper function to check if user has liked a post
+function hasUserLikedPost(post, userId) {
+    if (!post || !userId) return false;
+    if (!post.likedBy || !Array.isArray(post.likedBy)) return false;
+    return post.likedBy.includes(userId);
+}
+
 // Global functions for event handlers
 window.handleLike = async function(postId) {
-    if (!currentUser) {
+    if (!currentUser || !currentUser.uid) {
         alert('لطفاً ابتدا وارد شوید');
         return;
     }
@@ -560,20 +567,31 @@ window.handleLike = async function(postId) {
         const postRef = doc(window.firebase.db, 'posts', postId);
         const post = posts.find(p => p.id === postId);
         
-        if (!post) return;
+        if (!post) {
+            console.error('Post not found:', postId);
+            return;
+        }
         
-        const likedBy = post.likedBy || [];
-        const userLiked = likedBy.includes(currentUser.uid);
+        // بررسی دقیق‌تر لایک‌های قبلی
+        const userLiked = hasUserLikedPost(post, currentUser.uid);
         
-        // اگر کاربر قبلاً لایک کرده، اجازه unlike ندهیم
+        console.log('User ID:', currentUser.uid);
+        console.log('Post likedBy:', post.likedBy);
+        console.log('User already liked:', userLiked);
+        
+        // اگر کاربر قبلاً لایک کرده، اجازه لایک مجدد ندهیم
         if (userLiked) {
             alert('شما قبلاً این پست را لایک کرده‌اید!');
             return;
         }
         
         // فقط لایک کردن (بدون unlike)
+        const currentLikedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
         const newLikes = (post.likes || 0) + 1;
-        const newLikedBy = [...likedBy, currentUser.uid];
+        const newLikedBy = [...currentLikedBy, currentUser.uid];
+        
+        console.log('New likes count:', newLikes);
+        console.log('New liked by array:', newLikedBy);
         
         await updateDoc(postRef, { 
             likes: newLikes,
@@ -588,9 +606,10 @@ window.handleLike = async function(postId) {
         const likeButton = document.querySelector(`[onclick="handleLike('${postId}')"]`);
         if (likeButton) {
             likeButton.classList.add('liked');
-            likeButton.disabled = true; // غیرفعال کردن دکمه بعد از لایک
+            likeButton.disabled = true;
             likeButton.style.opacity = '0.7';
             likeButton.style.cursor = 'not-allowed';
+            likeButton.onclick = null; // حذف event handler
             
             const likeCount = likeButton.querySelector('.like-count');
             if (likeCount) {
