@@ -61,8 +61,10 @@ function initializeApp() {
             const target = button.getAttribute('data-target');
             
             // Update active nav button
-            navButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
+            navButtons.forEach(btn => {
+                if (btn) btn.classList.remove('active');
+            });
+            if (button) button.classList.add('active');
             
             // Show target screen
             screens.forEach(screen => screen.classList.remove('active'));
