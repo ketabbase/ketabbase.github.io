@@ -244,16 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     
-    // Event delegation for profile clicks
-    document.addEventListener('click', (e) => {
-        const target = e.target.closest('[data-clickable="true"]');
-        if (target && target.dataset.userId) {
-            console.log('Profile element clicked for user:', target.dataset.userId);
-            e.preventDefault();
-            e.stopPropagation();
-            showUserProfile(target.dataset.userId);
-        }
-    });
+
 
     // FAB - Add Post button
     addPostButton.addEventListener('click', () => {
@@ -438,10 +429,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const userAvatar = createUserAvatar(post.userId, post.username);
             postHeaderHtml = `
                 <div class="post-header">
-                    <div class="post-avatar" data-user-id="${post.userId}" style="cursor: pointer;">
+                    <div class="post-avatar">
                         <div class="avatar-placeholder">${userAvatar}</div>
                     </div>
-                    <span class="post-username" data-user-id="${post.userId}" style="cursor: pointer;">${post.username}</span>
+                    <span class="post-username">${post.username}</span>
                     <span class="post-role">(${post.userRole === 'admin' ? 'مدیر' : 'کاربر'})</span>
                 </div>
             `;
@@ -495,11 +486,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         return `
                             <div class="comment" data-comment-id="${comment.id}">
                                 <div class="comment-header">
-                                    <div class="comment-avatar" data-user-id="${comment.userId}" style="cursor: pointer;">
+                                    <div class="comment-avatar">
                                         <div class="avatar-placeholder small">${commentUserAvatar}</div>
                                     </div>
                                     <div class="comment-info">
-                                        <span class="comment-author" data-user-id="${comment.userId}" style="cursor: pointer;">${comment.username}</span>
+                                        <span class="comment-author">${comment.username}</span>
                                         <span class="comment-time">${comment.timestamp ? (comment.timestamp.toDate ? comment.timestamp.toDate().toLocaleString('fa-IR') : comment.timestamp.toLocaleString('fa-IR')) : ''}</span>
                                     </div>
                                 </div>
@@ -525,15 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
         postCard.querySelector('.comment-toggle-button').addEventListener('click', (e) => toggleComments(e));
         postCard.querySelector('.add-comment-form').addEventListener('submit', (e) => addComment(e, post.id));
         
-        // Add data attributes for event delegation
-        if (postAvatar) {
-            postAvatar.dataset.userId = post.userId;
-            postAvatar.dataset.clickable = 'true';
-        }
-        if (postUsername) {
-            postUsername.dataset.userId = post.userId;
-            postUsername.dataset.clickable = 'true';
-        }
+
         
         // Debug info (optional - can be removed)
         if (currentUser) {
@@ -557,121 +540,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         
-        // Add click listeners for comment avatars and usernames
-        postCard.querySelectorAll('.comment-avatar, .comment-author').forEach(element => {
-            element.addEventListener('click', (e) => {
-                const userId = element.dataset.userId;
-                console.log('Comment element clicked for user:', userId);
-                if (userId) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    showUserProfile(userId);
-                }
-            });
-        });
+
 
         return postCard;
     };
 
-    const showUserProfile = async (userId) => {
-        console.log('Showing profile for user:', userId);
-        
-        try {
-            // Try to load user profile data from Firestore
-            let userProfileData = await loadOtherUserProfile(userId);
-            
-            // If not found in Firestore, create basic profile from posts data
-            if (!userProfileData) {
-                console.log('User profile not found in Firestore, creating from posts data');
-                
-                // Find user's posts to get basic info
-                const userPosts = posts.filter(post => post.userId === userId);
-                if (userPosts.length > 0) {
-                    const firstPost = userPosts[0];
-                    userProfileData = {
-                        username: firstPost.username,
-                        email: firstPost.username, // Use username as email fallback
-                        role: firstPost.userRole || 'کاربر',
-                        bio: 'بیوگرافی ثبت نشده'
-                    };
-                    console.log('Created profile from posts data:', userProfileData);
-                } else {
-                    console.log('No posts found for user:', userId);
-                    alert('اطلاعات کاربر یافت نشد');
-                    return;
-                }
-            }
-            
-            // Load user's posts
-            const userPosts = posts.filter(post => post.userId === userId);
-            
-            // Create user profile modal
-            const modal = document.createElement('div');
-            modal.className = 'user-profile-modal';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h2>پروفایل کاربر</h2>
-                        <button class="close-modal">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="user-profile-info">
-                            <div class="user-avatar-large">
-                                <div class="avatar-placeholder large">${createUserAvatar(userId, userProfileData.username || userProfileData.email)}</div>
-                            </div>
-                            <div class="user-details">
-                                <h3>${userProfileData.username || userProfileData.email}</h3>
-                                <p class="user-bio">${userProfileData.bio || 'بیوگرافی ثبت نشده'}</p>
-                                <p class="user-role">نقش: ${userProfileData.role === 'admin' ? 'مدیر' : 'کاربر'}</p>
-                            </div>
-                        </div>
-                        <div class="user-posts-section">
-                            <h3>پست‌های کاربر (${userPosts.length})</h3>
-                            <div class="user-posts-list">
-                                ${userPosts.length > 0 ? userPosts.map(post => `
-                                    <div class="user-post-card">
-                                        <div class="post-content">
-                                            ${post.bookCoverURL ? `<img src="${post.bookCoverURL}" alt="Book Cover" class="book-cover-small">` : ''}
-                                            <h4 class="book-title">${post.bookTitle}</h4>
-                                            <p class="book-author">نویسنده: ${post.bookAuthor}</p>
-                                            <blockquote class="book-quote">"${post.bookQuote}"</blockquote>
-                                        </div>
-                                        <div class="post-stats">
-                                            <span class="likes-count">❤️ ${post.likes || 0}</span>
-                                            <span class="comments-count">💬 ${post.comments ? post.comments.length : 0}</span>
-                                        </div>
-                                    </div>
-                                `).join('') : '<p class="no-posts">این کاربر هنوز پستی ارسال نکرده است.</p>'}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Add modal to page
-            document.body.appendChild(modal);
-            
-            // Add event listeners
-            modal.querySelector('.close-modal').addEventListener('click', () => {
-                modal.remove();
-            });
-            
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.remove();
-                }
-            });
-            
-            // Show modal with animation
-            setTimeout(() => {
-                modal.classList.add('show');
-            }, 10);
-            
-        } catch (error) {
-            console.error('Error showing user profile:', error);
-            alert('خطا در بارگذاری پروفایل کاربر');
-        }
-    };
+
 
     const handleLike = async (e, postId) => {
         if (!currentUser) {
@@ -1255,65 +1129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Load other user's profile (for viewing profiles)
-    const loadOtherUserProfile = async (uid) => {
-        try {
-            console.log('Loading profile for user ID:', uid);
-            
-            // First try to get from Firestore users collection
-            const usersRef = collection(window.firebase.db, 'users');
-            const q = query(usersRef, where('uid', '==', uid));
-            const snapshot = await getDocs(q);
-            
-            if (!snapshot.empty) {
-                const userData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
-                console.log('Found user profile in Firestore:', userData);
-                return userData;
-            } else {
-                console.log('No user profile found in Firestore for UID:', uid);
-                
-                // Try to get user info from posts
-                const userPosts = posts.filter(post => post.userId === uid);
-                if (userPosts.length > 0) {
-                    const firstPost = userPosts[0];
-                    const userData = {
-                        username: firstPost.username,
-                        email: firstPost.username,
-                        role: firstPost.userRole || 'کاربر',
-                        bio: 'بیوگرافی ثبت نشده',
-                        uid: uid
-                    };
-                    console.log('Created user profile from posts data:', userData);
-                    return userData;
-                }
-                
-                return null;
-            }
-        } catch (error) {
-            console.error('Error loading other user profile:', error);
-            
-            // Fallback: try to get user info from posts even if Firestore fails
-            try {
-                const userPosts = posts.filter(post => post.userId === uid);
-                if (userPosts.length > 0) {
-                    const firstPost = userPosts[0];
-                    const userData = {
-                        username: firstPost.username,
-                        email: firstPost.username,
-                        role: firstPost.userRole || 'کاربر',
-                        bio: 'بیوگرافی ثبت نشده',
-                        uid: uid
-                    };
-                    console.log('Created user profile from posts data (fallback):', userData);
-                    return userData;
-                }
-            } catch (fallbackError) {
-                console.error('Fallback error:', fallbackError);
-            }
-            
-            return null;
-        }
-    };
+
 
     // Load user profile
     const loadUserProfile = async (uid) => {
