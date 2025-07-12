@@ -391,13 +391,22 @@ async function loadUserProfile(user) {
         if (!snapshot.empty) {
             const userData = snapshot.docs[0].data();
             console.log('User data found:', userData);
+            
             if (profileBio) {
                 profileBio.textContent = userData.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
                 console.log('Profile bio updated:', profileBio.textContent);
             }
+            
             if (profileRole) {
                 profileRole.textContent = userData.role || 'کاربر';
                 console.log('Profile role updated:', profileRole.textContent);
+            }
+            
+            // Update username from user data
+            if (profileUsername) {
+                const username = userData.username || user.displayName || user.email;
+                profileUsername.textContent = username;
+                console.log('Profile username updated from user data:', username);
             }
         } else {
             console.log('No user document found, creating default profile');
@@ -412,6 +421,11 @@ async function loadUserProfile(user) {
             });
             if (profileBio) profileBio.textContent = 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
             if (profileRole) profileRole.textContent = 'کاربر';
+            if (profileUsername) {
+                const username = user.displayName || user.email;
+                profileUsername.textContent = username;
+                console.log('Profile username set to default:', username);
+            }
         }
     } catch (error) {
         console.error('Error loading user profile:', error);
