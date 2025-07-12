@@ -66,49 +66,67 @@ document.addEventListener('DOMContentLoaded', () => {
     // بارگذاری همه پست‌ها و کامنت‌ها برای همه کاربران (مهمان و لاگین)
     const loadPostsAndComments = () => {
         console.log('Loading posts and comments for all users...');
-        const q = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
-        onSnapshot(q, async (snapshot) => {
+        
+        // Load posts with real-time listener
+        const postsQuery = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
+        onSnapshot(postsQuery, async (snapshot) => {
             const newPosts = [];
             for (const doc of snapshot.docs) {
                 const postData = { id: doc.id, ...doc.data() };
-                                    // بارگذاری کامنت‌های هر پست (بدون orderBy برای جلوگیری از نیاز به index)
-                    try {
-                        const commentsQuery = query(
-                            collection(window.firebase.db, 'comments'),
-                            where('postId', '==', doc.id)
-                        );
-                        const commentsSnapshot = await getDocs(commentsQuery);
-                        const comments = [];
-                        commentsSnapshot.forEach((commentDoc) => {
-                            const commentData = commentDoc.data();
-                            comments.push({
-                                id: commentDoc.id,
-                                ...commentData,
-                                timestamp: commentData.timestamp?.toDate ? commentData.timestamp.toDate() : commentData.timestamp
-                            });
-                        });
-                        // Sort comments by timestamp in JavaScript
-                        comments.sort((a, b) => {
-                            const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
-                            const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
-                            return timeA - timeB;
-                        });
-                        postData.comments = comments;
-                        console.log(`Loaded ${comments.length} comments for post ${doc.id}`);
-                    } catch (commentError) {
-                        console.error('Error loading comments for post:', doc.id, commentError);
-                        postData.comments = [];
-                    }
                 newPosts.push(postData);
             }
-            // فقط اگر تغییر کرده بود رندر کن
-            const postsChanged = JSON.stringify(posts) !== JSON.stringify(newPosts);
-            if (postsChanged) {
-                posts = newPosts;
-                isLoadingPosts = false; // Mark as loaded
-                renderPosts();
-                console.log(`Rendered ${newPosts.length} posts with comments`);
-            }
+            
+            // Update posts immediately
+            posts = newPosts;
+            isLoadingPosts = false;
+            renderPosts();
+            console.log(`Loaded ${newPosts.length} posts`);
+            
+            // Load comments for all posts with real-time listener
+            loadCommentsForAllPosts();
+        });
+    };
+
+    const loadCommentsForAllPosts = () => {
+        // Set up real-time listener for all comments
+        const commentsQuery = query(collection(window.firebase.db, 'comments'));
+        onSnapshot(commentsQuery, (snapshot) => {
+            const allComments = [];
+            snapshot.forEach((commentDoc) => {
+                const commentData = commentDoc.data();
+                allComments.push({
+                    id: commentDoc.id,
+                    ...commentData,
+                    timestamp: commentData.timestamp?.toDate ? commentData.timestamp.toDate() : commentData.timestamp
+                });
+            });
+            
+            // Group comments by postId
+            const commentsByPost = {};
+            allComments.forEach(comment => {
+                if (!commentsByPost[comment.postId]) {
+                    commentsByPost[comment.postId] = [];
+                }
+                commentsByPost[comment.postId].push(comment);
+            });
+            
+            // Sort comments by timestamp for each post
+            Object.keys(commentsByPost).forEach(postId => {
+                commentsByPost[postId].sort((a, b) => {
+                    const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+                    const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+                    return timeA - timeB;
+                });
+            });
+            
+            // Update posts with comments
+            posts.forEach(post => {
+                post.comments = commentsByPost[post.id] || [];
+            });
+            
+            // Re-render posts to show updated comments
+            renderPosts();
+            console.log(`Updated comments for all posts`);
         });
     };
 
@@ -329,29 +347,23 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        console.log(`Rendering ${posts.length} posts with comments...`);
-
-        // Create a Set to track processed posts to avoid duplicates
-        const processedPosts = new Set();
+        // Use DocumentFragment for better performance
+        const fragment = document.createDocumentFragment();
+        const userFragment = document.createDocumentFragment();
 
         posts.forEach(post => {
-            if (!processedPosts.has(post.id)) {
-                processedPosts.add(post.id);
-                
-                const newPostCard = createPostCard(post);
-                postsList.appendChild(newPostCard);
+            const newPostCard = createPostCard(post);
+            fragment.appendChild(newPostCard);
 
-                if (currentUser && post.userId === currentUser.uid) {
-                    const userPostCard = createPostCard(post, true);
-                    if (userPostsList) userPostsList.appendChild(userPostCard);
-                }
-                
-                // Log comment count for debugging
-                if (post.comments && post.comments.length > 0) {
-                    console.log(`Post ${post.id}: ${post.comments.length} comments rendered`);
-                }
+            if (currentUser && post.userId === currentUser.uid) {
+                const userPostCard = createPostCard(post, true);
+                userFragment.appendChild(userPostCard);
             }
         });
+
+        // Append fragments to DOM (more efficient than individual appends)
+        postsList.appendChild(fragment);
+        if (userPostsList) userPostsList.appendChild(userFragment);
 
         if (userPostsList && userPostsList.children.length === 0) {
             userPostsList.innerHTML = `
@@ -575,6 +587,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!commentText) return;
 
+        // Clear input immediately for better UX
+        commentInput.value = '';
+
         // Optimistic UI update - add comment immediately to local state
         const post = posts.find(p => p.id === postId);
         if (post) {
@@ -711,9 +726,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
-            // Clear input after successful save
-            commentInput.value = '';
-            
             // Add animation
             const commentButton = e.target.closest('.post-card').querySelector('.comment-toggle-button');
             commentButton.style.transform = 'scale(1.1)';
@@ -742,8 +754,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
-            // Clear input field regardless of success/failure
-            commentInput.value = '';
+            // Input already cleared at the beginning
         }
     };
 
