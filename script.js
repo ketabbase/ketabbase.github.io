@@ -369,25 +369,33 @@ async function loadPosts() {
         
         onSnapshot(q, async (snapshot) => {
             posts = [];
+            
             for (const doc of snapshot.docs) {
                 const postData = { id: doc.id, ...doc.data() };
                 
                 // Load comments for this post
-                const commentsQuery = query(
-                    collection(window.firebase.db, 'comments'),
-                    where('postId', '==', doc.id),
-                    orderBy('timestamp', 'asc')
-                );
+                try {
+                    const commentsQuery = query(
+                        collection(window.firebase.db, 'comments'),
+                        where('postId', '==', doc.id),
+                        orderBy('timestamp', 'asc')
+                    );
+                    
+                    const commentsSnapshot = await getDocs(commentsQuery);
+                    const comments = [];
+                    commentsSnapshot.forEach((commentDoc) => {
+                        comments.push({ id: commentDoc.id, ...commentDoc.data() });
+                    });
+                    
+                    postData.comments = comments;
+                } catch (commentError) {
+                    console.error('Error loading comments for post:', doc.id, commentError);
+                    postData.comments = [];
+                }
                 
-                const commentsSnapshot = await getDocs(commentsQuery);
-                const comments = [];
-                commentsSnapshot.forEach((commentDoc) => {
-                    comments.push({ id: commentDoc.id, ...commentDoc.data() });
-                });
-                
-                postData.comments = comments;
                 posts.push(postData);
             }
+            
             renderPosts();
         });
     } catch (error) {
@@ -470,9 +478,9 @@ function renderPosts() {
                 <blockquote class="book-quote">"${post.bookQuote}"</blockquote>
             </div>
             <div class="post-actions">
-                <button class="action-button like-button ${hasUserLikedPost(post, currentUser?.uid) ? 'liked' : ''}" 
+                <button class="action-button like-button ${(post.likedBy && Array.isArray(post.likedBy) && post.likedBy.includes(currentUser?.uid)) ? 'liked' : ''}" 
                         onclick="handleLike('${post.id}')"
-                        ${hasUserLikedPost(post, currentUser?.uid) ? 'disabled' : ''}>
+                        ${(post.likedBy && Array.isArray(post.likedBy) && post.likedBy.includes(currentUser?.uid)) ? 'disabled' : ''}>
                     <span class="material-icons">thumb_up</span> لایک (<span class="like-count">${post.likes || 0}</span>)
                 </button>
                 <button class="action-button comment-toggle-button" onclick="toggleComments('${post.id}')">
@@ -527,9 +535,9 @@ function renderUserPosts() {
                 <blockquote class="book-quote">"${post.bookQuote}"</blockquote>
             </div>
             <div class="post-actions">
-                <button class="action-button like-button ${hasUserLikedPost(post, currentUser?.uid) ? 'liked' : ''}" 
+                <button class="action-button like-button ${(post.likedBy && Array.isArray(post.likedBy) && post.likedBy.includes(currentUser?.uid)) ? 'liked' : ''}" 
                         onclick="handleLike('${post.id}')"
-                        ${hasUserLikedPost(post, currentUser?.uid) ? 'disabled' : ''}>
+                        ${(post.likedBy && Array.isArray(post.likedBy) && post.likedBy.includes(currentUser?.uid)) ? 'disabled' : ''}>
                     <span class="material-icons">thumb_up</span> لایک (<span class="like-count">${post.likes || 0}</span>)
                 </button>
                 <button class="action-button comment-toggle-button" onclick="toggleComments('${post.id}')">
@@ -556,6 +564,9 @@ function hasUserLikedPost(post, userId) {
     return post.likedBy.includes(userId);
 }
 
+// Make it available globally
+window.hasUserLikedPost = hasUserLikedPost;
+
 // Global functions for event handlers
 window.handleLike = async function(postId) {
     if (!currentUser || !currentUser.uid) {
@@ -573,7 +584,8 @@ window.handleLike = async function(postId) {
         }
         
         // بررسی دقیق‌تر لایک‌های قبلی
-        const userLiked = hasUserLikedPost(post, currentUser.uid);
+        const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+        const userLiked = likedBy.includes(currentUser.uid);
         
         console.log('User ID:', currentUser.uid);
         console.log('Post likedBy:', post.likedBy);
