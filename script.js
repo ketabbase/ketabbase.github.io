@@ -126,82 +126,62 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
             
-            // Store current comment section states before updating
-            const commentSectionStates = {};
-            posts.forEach(post => {
-                const postCard = document.querySelector(`[data-post-id="${post.id}"]`);
-                if (postCard) {
-                    const commentsSection = postCard.querySelector('.comments-section');
-                    if (commentsSection) {
-                        commentSectionStates[post.id] = commentsSection.style.display !== 'none';
-                    }
-                }
-            });
-            
             // Update posts with comments
             posts.forEach(post => {
                 post.comments = commentsByPost[post.id] || [];
             });
             
-            // Update posts with comments without re-rendering
+            // Update all comment buttons and lists
             posts.forEach(post => {
-                post.comments = commentsByPost[post.id] || [];
-            });
-            
-            // Update only the comment sections that are currently visible
-            Object.keys(commentSectionStates).forEach(postId => {
-                const postCard = document.querySelector(`[data-post-id="${postId}"]`);
-                if (postCard && commentSectionStates[postId]) {
-                    const commentsList = postCard.querySelector('.comments-list');
+                const postCard = document.querySelector(`[data-post-id="${post.id}"]`);
+                if (postCard) {
                     const commentButton = postCard.querySelector('.comment-toggle-button');
+                    const commentsList = postCard.querySelector('.comments-list');
                     
-                    if (commentsList && commentButton) {
-                        // Update comment count
-                        const post = posts.find(p => p.id === postId);
-                        if (post) {
-                            commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${post.comments.length})`;
+                    if (commentButton) {
+                        commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${post.comments.length})`;
+                    }
+                    
+                    if (commentsList) {
+                        commentsList.innerHTML = post.comments.map(comment => {
+                            const canDeleteComment = currentUser && (
+                                currentUser.email === 'ketabbase@ketabgard.com' || 
+                                userProfile?.role === 'admin' || 
+                                comment.userId === currentUser.uid
+                            );
                             
-                            // Update comments list
-                            commentsList.innerHTML = post.comments.map(comment => {
-                                const canDeleteComment = currentUser && (
-                                    currentUser.email === 'ketabbase@ketabgard.com' || 
-                                    userProfile?.role === 'admin' || 
-                                    comment.userId === currentUser.uid
-                                );
-                                
-                                const commentUserAvatar = createUserAvatar(comment.userId, comment.username);
-                                return `
-                                    <div class="comment" data-comment-id="${comment.id}">
-                                        <div class="comment-header">
-                                            <div class="comment-avatar">
-                                                <div class="avatar-placeholder small">${commentUserAvatar}</div>
-                                            </div>
-                                            <div class="comment-info">
-                                                <span class="comment-author">${comment.username}</span>
-                                                <span class="comment-time">${comment.timestamp ? (comment.timestamp.toDate ? comment.timestamp.toDate().toLocaleString('fa-IR') : comment.timestamp.toLocaleString('fa-IR')) : ''}</span>
-                                            </div>
+                            const commentUserAvatar = createUserAvatar(comment.userId, comment.username);
+                            return `
+                                <div class="comment" data-comment-id="${comment.id}">
+                                    <div class="comment-header">
+                                        <div class="comment-avatar">
+                                            <div class="avatar-placeholder small">${commentUserAvatar}</div>
                                         </div>
-                                        <div class="comment-text">${comment.text}</div>
-                                        ${canDeleteComment ? 
-                                            `<button class="delete-comment-button">
-                                                <span class="material-icons">close</span>
-                                            </button>` : ''
-                                        }
+                                        <div class="comment-info">
+                                            <span class="comment-author">${comment.username}</span>
+                                            <span class="comment-time">${comment.timestamp ? (comment.timestamp.toDate ? comment.timestamp.toDate().toLocaleString('fa-IR') : comment.timestamp.toLocaleString('fa-IR')) : ''}</span>
+                                        </div>
                                     </div>
-                                `;
-                            }).join('');
-                            
-                            // Re-add event listeners for delete buttons
-                            commentsList.querySelectorAll('.delete-comment-button').forEach(button => {
-                                button.addEventListener('click', (e) => {
-                                    const commentEl = e.target.closest('.comment');
-                                    if (commentEl) {
-                                        const commentId = commentEl.dataset.commentId;
-                                        deleteComment(postId, commentId);
+                                    <div class="comment-text">${comment.text}</div>
+                                    ${canDeleteComment ? 
+                                        `<button class="delete-comment-button">
+                                            <span class="material-icons">close</span>
+                                        </button>` : ''
                                     }
-                                });
+                                </div>
+                            `;
+                        }).join('');
+                        
+                        // Re-add event listeners for delete buttons
+                        commentsList.querySelectorAll('.delete-comment-button').forEach(button => {
+                            button.addEventListener('click', (e) => {
+                                const commentEl = e.target.closest('.comment');
+                                if (commentEl) {
+                                    const commentId = commentEl.dataset.commentId;
+                                    deleteComment(post.id, commentId);
+                                }
                             });
-                        }
+                        });
                     }
                 }
             });
