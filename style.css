@@ -315,53 +315,56 @@ main {
 }
 
 .profile-header {
-    background-color: var(--secondary-color);
-    padding: 20px;
-    border-radius: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 2rem;
+    border-radius: 15px;
     margin-bottom: 20px;
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+    color: white;
+    text-align: center;
     position: relative; /* For positioning edit button */
 }
 
 .profile-picture {
-    width: 100px;
-    height: 100px;
+    width: 120px;
+    height: 120px;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid var(--primary-color);
-    margin-bottom: 10px;
+    border: 4px solid white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    margin-bottom: 1rem;
 }
 
 #profile-screen h2 {
     font-size: 1.8em;
-    color: var(--primary-color);
+    color: white;
     margin-bottom: 5px;
 }
 
 #profile-screen p {
-    color: #666;
+    color: rgba(255,255,255,0.9);
     font-size: 0.95em;
     margin-bottom: 5px;
 }
 
 /* Edit Bio Button */
 .edit-bio-button {
-    background: none;
-    border: none;
-    color: var(--primary-color);
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
     cursor: pointer;
     font-size: 0.9em;
     display: flex;
     align-items: center;
     gap: 5px;
-    padding: 5px 10px;
-    border-radius: 5px;
-    transition: background-color 0.3s ease;
-    margin: 10px auto 0 auto; /* Center the button below bio */
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    margin: 1rem auto 0 auto; /* Center the button below bio */
 }
 
 .edit-bio-button:hover {
-    background-color: var(--secondary-color);
+    background: rgba(255,255,255,0.3);
+    transform: translateY(-2px);
 }
 
 .edit-bio-button .material-icons {
@@ -473,7 +476,7 @@ main {
     border-radius: 8px;
     font-size: 1.1em;
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: all 0.3s ease;
     font-weight: 700;
 }
 
@@ -485,6 +488,8 @@ main {
 
 .submit-button:hover {
     background-color: #8C3D22;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
 
 .cancel-button {
@@ -494,6 +499,35 @@ main {
 
 .cancel-button:hover {
     background-color: #C0C0C0;
+    transform: translateY(-2px);
+}
+
+/* Profile specific buttons */
+#change-profile-image-button,
+#logout-button {
+    margin: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+#change-profile-image-button {
+    background: #4CAF50;
+    color: white;
+}
+
+#logout-button {
+    background: #f44336;
+    color: white;
+}
+
+#change-profile-image-button:hover,
+#logout-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
 
 /* Login Screen */
