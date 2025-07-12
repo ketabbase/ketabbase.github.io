@@ -74,6 +74,7 @@ function initializeApp() {
                 if (screen && screen.classList) screen.classList.remove('active');
             });
             const targetScreen = document.getElementById(target + '-screen');
+            console.log('Clicked nav button, target:', target, 'targetScreen:', targetScreen);
             if (targetScreen && targetScreen.classList) targetScreen.classList.add('active');
         });
     });
