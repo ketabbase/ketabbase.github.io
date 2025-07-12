@@ -191,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
             bookCoverPreview.style.display = 'none';
             bookCoverPreview.src = '#';
             showScreen('feed-screen');
-            alert('پست با موفقیت منتشر شد!');
             
         } catch (error) {
             console.error('Error creating post:', error);
@@ -341,8 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const userLiked = likedBy.includes(currentUser.uid);
 
         if (userLiked) {
-            alert('شما قبلاً این پست را لایک کرده‌اید!');
-            return;
+            return; // Silent return if already liked
         }
 
         try {
@@ -359,16 +357,21 @@ document.addEventListener('DOMContentLoaded', () => {
             post.likes = newLikes;
             post.likedBy = newLikedBy;
 
-            // Update UI
+            // Update UI with animation
             e.currentTarget.classList.add('liked');
             e.currentTarget.disabled = true;
             e.currentTarget.style.opacity = '0.7';
             e.currentTarget.style.cursor = 'not-allowed';
             e.currentTarget.querySelector('.like-count').textContent = newLikes;
+            
+            // Add a quick animation
+            e.currentTarget.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                e.currentTarget.style.transform = 'scale(1)';
+            }, 150);
 
         } catch (error) {
             console.error('Error liking post:', error);
-            alert('خطا در لایک کردن');
         }
     };
 
@@ -404,9 +407,15 @@ document.addEventListener('DOMContentLoaded', () => {
             await addDoc(collection(window.firebase.db, 'comments'), commentData);
             commentInput.value = '';
             
+            // Add a quick animation to the comment button
+            const commentButton = e.target.closest('.post-card').querySelector('.comment-toggle-button');
+            commentButton.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                commentButton.style.transform = 'scale(1)';
+            }, 150);
+            
         } catch (error) {
             console.error('Error adding comment:', error);
-            alert('خطا در افزودن کامنت');
         }
     };
 
@@ -418,8 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (confirm('آیا مطمئن هستید که می‌خواهید این پست را حذف کنید؟')) {
             try {
-                await deleteDoc(doc(window.firebase.db, 'posts', postId));
-                alert('پست با موفقیت حذف شد!');
+                            await deleteDoc(doc(window.firebase.db, 'posts', postId));
             } catch (error) {
                 console.error('Error deleting post:', error);
                 alert('خطا در حذف پست');
@@ -436,7 +444,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (confirm('آیا مطمئن هستید که می‌خواهید این کامنت را حذف کنید؟')) {
             try {
                 await deleteDoc(doc(window.firebase.db, 'comments', commentId));
-                alert('کامنت با موفقیت حذف شد!');
             } catch (error) {
                 console.error('Error deleting comment:', error);
                 alert('خطا در حذف کامنت');
@@ -456,7 +463,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 usernameInput + '@ketabgard.com', 
                 passwordInput
             );
-            alert(`خوش آمدید، ${userCredential.user.displayName || usernameInput}!`);
             showScreen('feed-screen');
         } catch (error) {
             console.error('Login error:', error);
@@ -492,7 +498,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 createdAt: serverTimestamp()
             });
             
-            alert('ثبت نام با موفقیت انجام شد. اکنون می‌توانید وارد شوید.');
             authForm.reset();
         } catch (error) {
             console.error('Registration error:', error);
@@ -507,7 +512,6 @@ document.addEventListener('DOMContentLoaded', () => {
     logoutButton.addEventListener('click', async () => {
         try {
             await signOut(window.firebase.auth);
-            alert('از حساب خود خارج شدید.');
             showScreen('login-screen');
         } catch (error) {
             console.error('Logout error:', error);
@@ -537,7 +541,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 profileBio.innerHTML = newBio;
                 editBioButton.innerHTML = '<span class="material-icons">edit</span> ویرایش بیو';
-                alert('بیو با موفقیت به‌روزرسانی شد!');
             } catch (error) {
                 console.error('Error updating bio:', error);
                 alert('خطا در به‌روزرسانی بیو');
