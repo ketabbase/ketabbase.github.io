@@ -71,26 +71,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadPostsAndComments = () => {
         console.log('Loading posts and comments for all users...');
         
-        // Load posts with real-time listener
-        const postsQuery = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
-        onSnapshot(postsQuery, async (snapshot) => {
-            const newPosts = [];
-            for (const doc of snapshot.docs) {
-                const postData = { id: doc.id, ...doc.data() };
-                newPosts.push(postData);
-            }
-            
-            // Update posts immediately
-            posts = newPosts;
-            isLoadingPosts = false;
-            renderPosts();
-            console.log(`Loaded ${newPosts.length} posts`);
-            
-            // Load comments for all posts with real-time listener
-            loadCommentsForAllPosts();
-            
-            // Load all user profiles for avatars
-            loadAllUserProfiles();
+        // Load all user profiles first
+        loadAllUserProfiles().then(() => {
+            // Load posts with real-time listener
+            const postsQuery = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
+            onSnapshot(postsQuery, async (snapshot) => {
+                const newPosts = [];
+                for (const doc of snapshot.docs) {
+                    const postData = { id: doc.id, ...doc.data() };
+                    newPosts.push(postData);
+                }
+                
+                // Update posts immediately
+                posts = newPosts;
+                isLoadingPosts = false;
+                renderPosts();
+                console.log(`Loaded ${newPosts.length} posts`);
+                
+                // Load comments for all posts with real-time listener
+                loadCommentsForAllPosts();
+            });
         });
     };
 
@@ -143,21 +143,68 @@ document.addEventListener('DOMContentLoaded', () => {
                 post.comments = commentsByPost[post.id] || [];
             });
             
-            // Re-render posts to show updated comments
-            renderPosts();
+            // Update posts with comments without re-rendering
+            posts.forEach(post => {
+                post.comments = commentsByPost[post.id] || [];
+            });
             
-            // Restore comment section states after re-render
-            setTimeout(() => {
-                Object.keys(commentSectionStates).forEach(postId => {
-                    const postCard = document.querySelector(`[data-post-id="${postId}"]`);
-                    if (postCard && commentSectionStates[postId]) {
-                        const commentsSection = postCard.querySelector('.comments-section');
-                        if (commentsSection) {
-                            commentsSection.style.display = 'block';
+            // Update only the comment sections that are currently visible
+            Object.keys(commentSectionStates).forEach(postId => {
+                const postCard = document.querySelector(`[data-post-id="${postId}"]`);
+                if (postCard && commentSectionStates[postId]) {
+                    const commentsList = postCard.querySelector('.comments-list');
+                    const commentButton = postCard.querySelector('.comment-toggle-button');
+                    
+                    if (commentsList && commentButton) {
+                        // Update comment count
+                        const post = posts.find(p => p.id === postId);
+                        if (post) {
+                            commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${post.comments.length})`;
+                            
+                            // Update comments list
+                            commentsList.innerHTML = post.comments.map(comment => {
+                                const canDeleteComment = currentUser && (
+                                    currentUser.email === 'ketabbase@ketabgard.com' || 
+                                    userProfile?.role === 'admin' || 
+                                    comment.userId === currentUser.uid
+                                );
+                                
+                                const commentUserAvatar = createUserAvatar(comment.userId, comment.username);
+                                return `
+                                    <div class="comment" data-comment-id="${comment.id}">
+                                        <div class="comment-header">
+                                            <div class="comment-avatar">
+                                                <div class="avatar-placeholder small">${commentUserAvatar}</div>
+                                            </div>
+                                            <div class="comment-info">
+                                                <span class="comment-author">${comment.username}</span>
+                                                <span class="comment-time">${comment.timestamp ? (comment.timestamp.toDate ? comment.timestamp.toDate().toLocaleString('fa-IR') : comment.timestamp.toLocaleString('fa-IR')) : ''}</span>
+                                            </div>
+                                        </div>
+                                        <div class="comment-text">${comment.text}</div>
+                                        ${canDeleteComment ? 
+                                            `<button class="delete-comment-button">
+                                                <span class="material-icons">close</span>
+                                            </button>` : ''
+                                        }
+                                    </div>
+                                `;
+                            }).join('');
+                            
+                            // Re-add event listeners for delete buttons
+                            commentsList.querySelectorAll('.delete-comment-button').forEach(button => {
+                                button.addEventListener('click', (e) => {
+                                    const commentEl = e.target.closest('.comment');
+                                    if (commentEl) {
+                                        const commentId = commentEl.dataset.commentId;
+                                        deleteComment(postId, commentId);
+                                    }
+                                });
+                            });
                         }
                     }
-                });
-            }, 100);
+                }
+            });
             
             console.log(`Updated comments for all posts`);
         });
@@ -175,8 +222,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             console.log(`Loaded ${Object.keys(userProfiles).length} user profiles`);
+            return true;
         } catch (error) {
             console.error('Error loading user profiles:', error);
+            return false;
         }
     };
 
@@ -381,18 +430,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const renderPosts = () => {
-        // Store current comment section states before clearing
-        const commentSectionStates = {};
-        posts.forEach(post => {
-            const postCard = document.querySelector(`[data-post-id="${post.id}"]`);
-            if (postCard) {
-                const commentsSection = postCard.querySelector('.comments-section');
-                if (commentsSection) {
-                    commentSectionStates[post.id] = commentsSection.style.display !== 'none';
-                }
-            }
-        });
-
         // Clear existing posts
         postsList.innerHTML = '';
         const userPostsList = document.querySelector('#profile-screen .user-posts-list');
@@ -446,19 +483,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
         }
-
-        // Restore comment section states after rendering
-        setTimeout(() => {
-            Object.keys(commentSectionStates).forEach(postId => {
-                const postCard = document.querySelector(`[data-post-id="${postId}"]`);
-                if (postCard && commentSectionStates[postId]) {
-                    const commentsSection = postCard.querySelector('.comments-section');
-                    if (commentsSection) {
-                        commentsSection.style.display = 'block';
-                    }
-                }
-            });
-        }, 50);
 
         updateAdminControls();
     };
