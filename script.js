@@ -426,6 +426,53 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!commentText) return;
 
+        // Find the post
+        const post = posts.find(p => p.id === postId);
+        if (!post) return;
+
+        // Create optimistic comment
+        const optimisticComment = {
+            id: 'temp-' + Date.now(),
+            postId,
+            userId: currentUser.uid,
+            username: currentUser.displayName || currentUser.email,
+            text: commentText,
+            timestamp: new Date()
+        };
+
+        // Add comment to local state immediately
+        if (!post.comments) post.comments = [];
+        post.comments.push(optimisticComment);
+
+        // Update UI immediately
+        const commentsList = e.target.closest('.post-card').querySelector('.comments-list');
+        const commentElement = document.createElement('div');
+        commentElement.className = 'comment';
+        commentElement.dataset.commentId = optimisticComment.id;
+        commentElement.innerHTML = `
+            <div class="comment-header">
+                <span class="comment-author">${optimisticComment.username}</span>
+                <span class="comment-time">${optimisticComment.timestamp.toLocaleString('fa-IR')}</span>
+            </div>
+            <div class="comment-text">${optimisticComment.text}</div>
+        `;
+        commentsList.appendChild(commentElement);
+
+        // Clear input
+        commentInput.value = '';
+
+        // Update comment count
+        const commentButton = e.target.closest('.post-card').querySelector('.comment-toggle-button');
+        const currentCount = post.comments.length;
+        commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${currentCount})`;
+
+        // Add animation
+        commentButton.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+            commentButton.style.transform = 'scale(1)';
+        }, 150);
+
+        // Save to Firebase
         try {
             const commentData = {
                 postId,
@@ -435,18 +482,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 timestamp: serverTimestamp()
             };
 
-            await addDoc(collection(window.firebase.db, 'comments'), commentData);
-            commentInput.value = '';
+            const docRef = await addDoc(collection(window.firebase.db, 'comments'), commentData);
             
-            // Add a quick animation to the comment button
-            const commentButton = e.target.closest('.post-card').querySelector('.comment-toggle-button');
-            commentButton.style.transform = 'scale(1.1)';
-            setTimeout(() => {
-                commentButton.style.transform = 'scale(1)';
-            }, 150);
+            // Update the optimistic comment with real ID
+            optimisticComment.id = docRef.id;
+            commentElement.dataset.commentId = docRef.id;
             
         } catch (error) {
             console.error('Error adding comment:', error);
+            // Remove optimistic comment if Firebase fails
+            post.comments = post.comments.filter(c => c.id !== optimisticComment.id);
+            commentElement.remove();
+            
+            // Revert comment count
+            const newCount = post.comments.length;
+            commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${newCount})`;
         }
     };
 
@@ -643,6 +693,45 @@ document.addEventListener('DOMContentLoaded', () => {
                     posts = newPosts;
                     renderPosts();
                 }
+            });
+
+            // Listen for new comments in real-time
+            const commentsQuery = query(collection(window.firebase.db, 'comments'), orderBy('timestamp', 'asc'));
+            onSnapshot(commentsQuery, (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === 'added') {
+                        const newComment = { id: change.doc.id, ...change.doc.data() };
+                        const post = posts.find(p => p.id === newComment.postId);
+                        
+                        if (post && !post.comments.find(c => c.id === newComment.id)) {
+                            if (!post.comments) post.comments = [];
+                            post.comments.push(newComment);
+                            
+                            // Update UI if the post is currently visible
+                            const postCard = document.querySelector(`[data-post-id="${post.id}"]`);
+                            if (postCard) {
+                                const commentsList = postCard.querySelector('.comments-list');
+                                if (commentsList) {
+                                    const commentElement = document.createElement('div');
+                                    commentElement.className = 'comment';
+                                    commentElement.dataset.commentId = newComment.id;
+                                    commentElement.innerHTML = `
+                                        <div class="comment-header">
+                                            <span class="comment-author">${newComment.username}</span>
+                                            <span class="comment-time">${newComment.timestamp?.toDate ? newComment.timestamp.toDate().toLocaleString('fa-IR') : ''}</span>
+                                        </div>
+                                        <div class="comment-text">${newComment.text}</div>
+                                    `;
+                                    commentsList.appendChild(commentElement);
+                                    
+                                    // Update comment count
+                                    const commentButton = postCard.querySelector('.comment-toggle-button');
+                                    commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${post.comments.length})`;
+                                }
+                            }
+                        }
+                    }
+                });
             });
         } catch (error) {
             console.error('Error loading posts:', error);
