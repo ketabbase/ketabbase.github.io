@@ -517,11 +517,24 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add click listeners for profile photos and usernames
         const postAvatar = postCard.querySelector('.post-avatar');
         const postUsername = postCard.querySelector('.post-username');
+        
+        console.log('Adding click listeners for post:', post.id);
+        console.log('Post avatar element:', postAvatar);
+        console.log('Post username element:', postUsername);
+        
         if (postAvatar) {
-            postAvatar.addEventListener('click', () => showUserProfile(post.userId));
+            postAvatar.addEventListener('click', (e) => {
+                console.log('Post avatar clicked for user:', post.userId);
+                e.stopPropagation();
+                showUserProfile(post.userId);
+            });
         }
         if (postUsername) {
-            postUsername.addEventListener('click', () => showUserProfile(post.userId));
+            postUsername.addEventListener('click', (e) => {
+                console.log('Post username clicked for user:', post.userId);
+                e.stopPropagation();
+                showUserProfile(post.userId);
+            });
         }
         
         // Debug info (optional - can be removed)
@@ -546,9 +559,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Add click listeners for comment avatars and usernames
         postCard.querySelectorAll('.comment-avatar, .comment-author').forEach(element => {
-            element.addEventListener('click', () => {
+            element.addEventListener('click', (e) => {
                 const userId = element.dataset.userId;
+                console.log('Comment element clicked for user:', userId);
                 if (userId) {
+                    e.stopPropagation();
                     showUserProfile(userId);
                 }
             });
@@ -559,6 +574,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const showUserProfile = async (userId) => {
         console.log('Showing profile for user:', userId);
+        
+        // Simple test alert to verify the function is called
+        alert(`کلیک روی پروفایل کاربر: ${userId}`);
         
         try {
             // Load user profile data
