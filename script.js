@@ -362,6 +362,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const renderPosts = () => {
+        console.log('renderPosts called with', posts.length, 'posts');
+        console.log('Posts data:', posts);
+        
         // Clear existing posts
         postsList.innerHTML = '';
         const userPostsList = document.querySelector('#profile-screen .user-posts-list');
@@ -1396,5 +1399,4 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     startLoadingPosts();
-    renderPosts();
 });
