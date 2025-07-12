@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <blockquote class="book-quote">"${post.bookQuote}"</blockquote>
             </div>
             <div class="post-actions">
-                <button class="${likeButtonClass}" ${likedByCurrentUser ? 'disabled' : ''}>
+                <button class="${likeButtonClass}">
                     <span class="material-icons">thumb_up</span> لایک (<span class="like-count">${post.likes || 0}</span>)
                 </button>
                 <button class="action-button comment-toggle-button">
@@ -339,14 +339,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const likedBy = post.likedBy || [];
         const userLiked = likedBy.includes(currentUser.uid);
 
-        if (userLiked) {
-            return; // Silent return if already liked
-        }
-
         try {
             const postRef = doc(window.firebase.db, 'posts', postId);
-            const newLikes = (post.likes || 0) + 1;
-            const newLikedBy = [...likedBy, currentUser.uid];
+            let newLikes, newLikedBy;
+
+            if (userLiked) {
+                // Unlike - remove user from likedBy and decrease likes
+                newLikes = (post.likes || 0) - 1;
+                newLikedBy = likedBy.filter(uid => uid !== currentUser.uid);
+                
+                // Update UI - remove liked state
+                e.currentTarget.classList.remove('liked');
+                e.currentTarget.disabled = false;
+                e.currentTarget.style.opacity = '1';
+                e.currentTarget.style.cursor = 'pointer';
+            } else {
+                // Like - add user to likedBy and increase likes
+                newLikes = (post.likes || 0) + 1;
+                newLikedBy = [...likedBy, currentUser.uid];
+                
+                // Update UI - add liked state
+                e.currentTarget.classList.add('liked');
+                e.currentTarget.disabled = false;
+                e.currentTarget.style.opacity = '1';
+                e.currentTarget.style.cursor = 'pointer';
+            }
 
             await updateDoc(postRef, { 
                 likes: newLikes,
@@ -357,11 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
             post.likes = newLikes;
             post.likedBy = newLikedBy;
 
-            // Update UI with animation
-            e.currentTarget.classList.add('liked');
-            e.currentTarget.disabled = true;
-            e.currentTarget.style.opacity = '0.7';
-            e.currentTarget.style.cursor = 'not-allowed';
+            // Update like count
             e.currentTarget.querySelector('.like-count').textContent = newLikes;
             
             // Add a quick animation
@@ -371,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 150);
 
         } catch (error) {
-            console.error('Error liking post:', error);
+            console.error('Error liking/unliking post:', error);
         }
     };
 
