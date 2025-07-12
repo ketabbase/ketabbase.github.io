@@ -262,6 +262,7 @@ main {
     background-color: var(--primary-color);
     color: var(--text-color-light);
     transform: scale(1.05);
+    pointer-events: none;
 }
 
 .action-button.like-button.liked .material-icons {
@@ -269,10 +270,31 @@ main {
     animation: likeAnimation 0.3s ease;
 }
 
+.action-button.like-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 @keyframes likeAnimation {
     0% { transform: scale(1); }
     50% { transform: scale(1.2); }
     100% { transform: scale(1); }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.like-success {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
 
 .comments-list {
