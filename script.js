@@ -415,6 +415,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const addComment = async (e, postId) => {
         e.preventDefault();
+        console.log('Adding comment for post:', postId);
+        
         if (!currentUser) {
             alert('برای ارسال کامنت باید وارد شوید.');
             showScreen('login-screen');
@@ -424,56 +426,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const commentInput = e.target.querySelector('.comment-input');
         const commentText = commentInput.value.trim();
         
+        console.log('Comment text:', commentText);
+        
         if (!commentText) return;
 
-        // Find the post
-        const post = posts.find(p => p.id === postId);
-        if (!post) return;
-
-        // Create optimistic comment
-        const optimisticComment = {
-            id: 'temp-' + Date.now(),
-            postId,
-            userId: currentUser.uid,
-            username: currentUser.displayName || currentUser.email,
-            text: commentText,
-            timestamp: new Date()
-        };
-
-        // Add comment to local state immediately
-        if (!post.comments) post.comments = [];
-        post.comments.push(optimisticComment);
-
-        // Update UI immediately
-        const commentsList = e.target.closest('.post-card').querySelector('.comments-list');
-        const commentElement = document.createElement('div');
-        commentElement.className = 'comment';
-        commentElement.dataset.commentId = optimisticComment.id;
-        commentElement.innerHTML = `
-            <div class="comment-header">
-                <span class="comment-author">${optimisticComment.username}</span>
-                <span class="comment-time">${optimisticComment.timestamp.toLocaleString('fa-IR')}</span>
-            </div>
-            <div class="comment-text">${optimisticComment.text}</div>
-        `;
-        commentsList.appendChild(commentElement);
-
-        // Clear input
+        // Clear input first
         commentInput.value = '';
 
-        // Update comment count
-        const commentButton = e.target.closest('.post-card').querySelector('.comment-toggle-button');
-        const currentCount = post.comments.length;
-        commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${currentCount})`;
-
-        // Add animation
-        commentButton.style.transform = 'scale(1.1)';
-        setTimeout(() => {
-            commentButton.style.transform = 'scale(1)';
-        }, 150);
-
-        // Save to Firebase
+        // Save to Firebase first
         try {
+            console.log('Saving to Firebase...');
             const commentData = {
                 postId,
                 userId: currentUser.uid,
@@ -482,21 +444,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 timestamp: serverTimestamp()
             };
 
+            console.log('Comment data for Firebase:', commentData);
             const docRef = await addDoc(collection(window.firebase.db, 'comments'), commentData);
+            console.log('Comment saved with ID:', docRef.id);
             
-            // Update the optimistic comment with real ID
-            optimisticComment.id = docRef.id;
-            commentElement.dataset.commentId = docRef.id;
+            // Add animation
+            const commentButton = e.target.closest('.post-card').querySelector('.comment-toggle-button');
+            commentButton.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                commentButton.style.transform = 'scale(1)';
+            }, 150);
             
         } catch (error) {
             console.error('Error adding comment:', error);
-            // Remove optimistic comment if Firebase fails
-            post.comments = post.comments.filter(c => c.id !== optimisticComment.id);
-            commentElement.remove();
-            
-            // Revert comment count
-            const newCount = post.comments.length;
-            commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${newCount})`;
+            alert('خطا در افزودن کامنت: ' + error.message);
+            // Put the text back in the input if it failed
+            commentInput.value = commentText;
         }
     };
 
@@ -745,6 +708,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             await loadUserProfile(user.uid);
             loadPosts();
+            
+            // Test Firebase connection
+            console.log('Testing Firebase connection...');
+            try {
+                const testDoc = await addDoc(collection(window.firebase.db, 'test'), {
+                    test: true,
+                    timestamp: serverTimestamp()
+                });
+                console.log('Firebase test successful, doc ID:', testDoc.id);
+                // Clean up test document
+                await deleteDoc(doc(window.firebase.db, 'test', testDoc.id));
+            } catch (error) {
+                console.error('Firebase test failed:', error);
+            }
         } else {
             posts = [];
             userProfile = null;
