@@ -49,9 +49,31 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUser = null; // Stores current logged-in user
     let posts = []; // Stores all posts
     let userProfile = null; // Stores user profile data
+    
+    // Check for saved auth state
+    const savedUser = localStorage.getItem('ketabboard_user');
+    if (savedUser) {
+        try {
+            const userData = JSON.parse(savedUser);
+            console.log('Found saved user data:', userData);
+        } catch (error) {
+            console.error('Error parsing saved user data:', error);
+            localStorage.removeItem('ketabboard_user');
+        }
+    }
 
     // Function to show a specific screen
     const showScreen = (screenId) => {
+        console.log('Showing screen:', screenId);
+        
+        // Hide loading screen if showing another screen
+        if (screenId !== 'loading-screen') {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.classList.remove('active');
+            }
+        }
+        
         screens.forEach(screen => {
             screen.classList.remove('active');
         });
@@ -617,6 +639,7 @@ document.addEventListener('DOMContentLoaded', () => {
     logoutButton.addEventListener('click', async () => {
         try {
             await signOut(window.firebase.auth);
+            localStorage.removeItem('ketabboard_user');
             showScreen('login-screen');
         } catch (error) {
             console.error('Logout error:', error);
@@ -729,11 +752,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Function to save user state to localStorage
+    const saveUserState = (user) => {
+        if (user) {
+            const userData = {
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('ketabboard_user', JSON.stringify(userData));
+            console.log('User state saved to localStorage');
+        } else {
+            localStorage.removeItem('ketabboard_user');
+            console.log('User state removed from localStorage');
+        }
+    };
+
     // Auth state listener
     onAuthStateChanged(window.firebase.auth, async (user) => {
+        console.log('Auth state changed:', user ? 'User logged in' : 'User logged out');
         currentUser = user;
         
+        // Save user state to localStorage
+        saveUserState(user);
+        
         if (user) {
+            console.log('Loading user profile and posts...');
             await loadUserProfile(user.uid);
             loadPosts();
             
@@ -827,12 +872,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Firebase test failed:', error);
             }
         } else {
+            console.log('Clearing posts and user profile...');
             posts = [];
             userProfile = null;
             renderPosts();
         }
         
-        showScreen(user ? 'feed-screen' : 'login-screen');
+        // Show appropriate screen based on auth state
+        const targetScreen = user ? 'feed-screen' : 'login-screen';
+        console.log('Showing screen:', targetScreen);
+        
+        // Add a small delay to ensure Firebase auth state is properly initialized
+        setTimeout(() => {
+            showScreen(targetScreen);
+        }, 500);
         
         // Set up periodic comment monitoring (for debugging)
         if (user) {
@@ -852,7 +905,76 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Initial render and screen load
+    // Function to check if user should be automatically logged in
+    const checkAutoLogin = async () => {
+        const savedUser = localStorage.getItem('ketabboard_user');
+        if (savedUser) {
+            try {
+                const userData = JSON.parse(savedUser);
+                const now = Date.now();
+                const timeDiff = now - userData.timestamp;
+                
+                // Auto-login if saved within last 24 hours
+                if (timeDiff < 24 * 60 * 60 * 1000) {
+                    console.log('Attempting auto-login for user:', userData.displayName);
+                    
+                    // Check if Firebase auth state is already set
+                    const currentAuthUser = window.firebase.auth.currentUser;
+                    if (!currentAuthUser) {
+                        console.log('No current auth user, waiting for Firebase to restore session...');
+                    } else {
+                        console.log('Firebase auth user already exists:', currentAuthUser.displayName);
+                    }
+                    
+                    return true;
+                } else {
+                    console.log('Saved user data is too old, removing...');
+                    localStorage.removeItem('ketabboard_user');
+                }
+            } catch (error) {
+                console.error('Error checking auto-login:', error);
+                localStorage.removeItem('ketabboard_user');
+            }
+        }
+        return false;
+    };
+
+    // Wait for Firebase to initialize before setting up auth listener
+    const waitForFirebase = async () => {
+        if (window.firebase && window.firebase.auth) {
+            console.log('Firebase initialized, setting up auth listener...');
+            
+            // Check for auto-login
+            await checkAutoLogin();
+            
+            // Set a timeout to show login screen if no auth state is detected
+            setTimeout(() => {
+                const currentAuthUser = checkCurrentAuthState();
+                if (!currentUser && !currentAuthUser) {
+                    console.log('No auth state detected after timeout, showing login screen');
+                    showScreen('login-screen');
+                }
+            }, 3000); // Wait 3 seconds for Firebase to restore auth state
+            
+            // Auth listener is already set up above
+        } else {
+            console.log('Firebase not ready yet, waiting...');
+            setTimeout(waitForFirebase, 100);
+        }
+    };
+
+    // Function to check current auth state
+    const checkCurrentAuthState = () => {
+        const auth = window.firebase.auth;
+        if (auth) {
+            const user = auth.currentUser;
+            console.log('Current Firebase auth user:', user ? user.displayName : 'None');
+            return user;
+        }
+        return null;
+    };
+
+    // Initial setup
+    waitForFirebase();
     renderPosts();
-    showScreen('login-screen');
 });
