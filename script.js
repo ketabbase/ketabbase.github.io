@@ -137,7 +137,7 @@ function initializeApp() {
                 const downloadURL = await getDownloadURL(snapshot.ref);
                 
                 await updateProfile(currentUser, { photoURL: downloadURL });
-                profilePicture.src = downloadURL;
+                profilePicture.innerHTML = `<img src="${downloadURL}" alt="Profile Picture">`;
                 alert('عکس پروفایل با موفقیت تغییر یافت!');
             } catch (error) {
                 console.error('Error uploading profile image:', error);
@@ -206,6 +206,14 @@ function updateUIForAuthState(user) {
         profileUsername.textContent = user.displayName || user.email;
         profileRole.textContent = 'کاربر';
         
+        // Update profile picture
+        if (user.photoURL) {
+            profilePicture.innerHTML = `<img src="${user.photoURL}" alt="Profile Picture">`;
+        } else {
+            const username = user.displayName || user.email || 'U';
+            profilePicture.innerHTML = `<div class="avatar-placeholder large">${username.charAt(0).toUpperCase()}</div>`;
+        }
+        
         // Show admin features if user is admin
         if (user.email === 'admin@ketabgard.com') {
             profileRole.textContent = 'مدیر';
@@ -219,6 +227,9 @@ function updateUIForAuthState(user) {
         loginNavButton.style.display = 'block';
         profileUsername.textContent = 'کاربر کتاب‌گرد';
         profileRole.textContent = 'کاربر';
+        
+        // Reset profile picture to default
+        profilePicture.innerHTML = '<div class="avatar-placeholder large">ک</div>';
         
         // Show login screen
         screens.forEach(screen => screen.classList.remove('active'));
@@ -381,7 +392,10 @@ async function loadUserProfile(user) {
         
         // Update profile picture if available
         if (user.photoURL) {
-            profilePicture.src = user.photoURL;
+            profilePicture.innerHTML = `<img src="${user.photoURL}" alt="Profile Picture">`;
+        } else {
+            const username = user.displayName || user.email || 'U';
+            profilePicture.innerHTML = `<div class="avatar-placeholder large">${username.charAt(0).toUpperCase()}</div>`;
         }
     } catch (error) {
         console.error('Error loading user profile:', error);
@@ -423,7 +437,12 @@ function renderPosts() {
     postsList.innerHTML = posts.map(post => `
         <div class="post-card" data-post-id="${post.id}">
             <div class="post-header">
-                <img src="${post.userPhotoURL || 'avatar.png'}" alt="User Avatar" class="post-avatar">
+                <div class="post-avatar">
+                    ${post.userPhotoURL ? 
+                        `<img src="${post.userPhotoURL}" alt="User Avatar">` : 
+                        `<div class="avatar-placeholder">${(post.username || 'U').charAt(0).toUpperCase()}</div>`
+                    }
+                </div>
                 <span class="post-username">${post.username}</span>
                 <span class="post-role">(${post.userRole})</span>
             </div>

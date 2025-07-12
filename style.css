@@ -130,9 +130,31 @@ main {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    object-fit: cover;
     margin-left: 10px;
     border: 2px solid var(--secondary-color);
+    overflow: hidden;
+}
+
+.post-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+.avatar-placeholder.large {
+    font-size: 2.5em;
 }
 
 .post-username {
@@ -333,10 +355,16 @@ main {
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    object-fit: cover;
     border: 4px solid white;
     box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.profile-picture img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 #profile-screen h2 {
