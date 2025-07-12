@@ -85,108 +85,58 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update posts immediately
                 posts = newPosts;
                 isLoadingPosts = false;
+                
+                // Load comments for all posts before rendering
+                await loadCommentsForAllPosts();
+                
+                // Now render posts with comments
                 renderPosts();
                 console.log(`Loaded ${newPosts.length} posts`);
-                
-                // Load comments for all posts with real-time listener
-                loadCommentsForAllPosts();
             });
         });
     };
 
-    const loadCommentsForAllPosts = () => {
-        // Set up real-time listener for all comments
-        const commentsQuery = query(collection(window.firebase.db, 'comments'));
-        onSnapshot(commentsQuery, (snapshot) => {
-            const allComments = [];
-            snapshot.forEach((commentDoc) => {
-                const commentData = commentDoc.data();
-                allComments.push({
-                    id: commentDoc.id,
-                    ...commentData,
-                    timestamp: commentData.timestamp?.toDate ? commentData.timestamp.toDate() : commentData.timestamp
+    const loadCommentsForAllPosts = async () => {
+        return new Promise((resolve) => {
+            // Set up real-time listener for all comments
+            const commentsQuery = query(collection(window.firebase.db, 'comments'));
+            onSnapshot(commentsQuery, (snapshot) => {
+                const allComments = [];
+                snapshot.forEach((commentDoc) => {
+                    const commentData = commentDoc.data();
+                    allComments.push({
+                        id: commentDoc.id,
+                        ...commentData,
+                        timestamp: commentData.timestamp?.toDate ? commentData.timestamp.toDate() : commentData.timestamp
+                    });
                 });
-            });
-            
-            // Group comments by postId
-            const commentsByPost = {};
-            allComments.forEach(comment => {
-                if (!commentsByPost[comment.postId]) {
-                    commentsByPost[comment.postId] = [];
-                }
-                commentsByPost[comment.postId].push(comment);
-            });
-            
-            // Sort comments by timestamp for each post
-            Object.keys(commentsByPost).forEach(postId => {
-                commentsByPost[postId].sort((a, b) => {
-                    const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
-                    const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
-                    return timeA - timeB;
+                
+                // Group comments by postId
+                const commentsByPost = {};
+                allComments.forEach(comment => {
+                    if (!commentsByPost[comment.postId]) {
+                        commentsByPost[comment.postId] = [];
+                    }
+                    commentsByPost[comment.postId].push(comment);
                 });
+                
+                // Sort comments by timestamp for each post
+                Object.keys(commentsByPost).forEach(postId => {
+                    commentsByPost[postId].sort((a, b) => {
+                        const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+                        const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+                        return timeA - timeB;
+                    });
+                });
+                
+                // Update posts with comments
+                posts.forEach(post => {
+                    post.comments = commentsByPost[post.id] || [];
+                });
+                
+                console.log(`Updated comments for all posts`);
+                resolve();
             });
-            
-            // Update posts with comments
-            posts.forEach(post => {
-                post.comments = commentsByPost[post.id] || [];
-            });
-            
-            // Update all comment buttons and lists
-            posts.forEach(post => {
-                const postCard = document.querySelector(`[data-post-id="${post.id}"]`);
-                if (postCard) {
-                    const commentButton = postCard.querySelector('.comment-toggle-button');
-                    const commentsList = postCard.querySelector('.comments-list');
-                    
-                    if (commentButton) {
-                        commentButton.innerHTML = `<span class="material-icons">comment</span> کامنت (${post.comments.length})`;
-                    }
-                    
-                    if (commentsList) {
-                        commentsList.innerHTML = post.comments.map(comment => {
-                            const canDeleteComment = currentUser && (
-                                currentUser.email === 'ketabbase@ketabgard.com' || 
-                                userProfile?.role === 'admin' || 
-                                comment.userId === currentUser.uid
-                            );
-                            
-                            const commentUserAvatar = createUserAvatar(comment.userId, comment.username);
-                            return `
-                                <div class="comment" data-comment-id="${comment.id}">
-                                    <div class="comment-header">
-                                        <div class="comment-avatar">
-                                            <div class="avatar-placeholder small">${commentUserAvatar}</div>
-                                        </div>
-                                        <div class="comment-info">
-                                            <span class="comment-author">${comment.username}</span>
-                                            <span class="comment-time">${comment.timestamp ? (comment.timestamp.toDate ? comment.timestamp.toDate().toLocaleString('fa-IR') : comment.timestamp.toLocaleString('fa-IR')) : ''}</span>
-                                        </div>
-                                    </div>
-                                    <div class="comment-text">${comment.text}</div>
-                                    ${canDeleteComment ? 
-                                        `<button class="delete-comment-button">
-                                            <span class="material-icons">close</span>
-                                        </button>` : ''
-                                    }
-                                </div>
-                            `;
-                        }).join('');
-                        
-                        // Re-add event listeners for delete buttons
-                        commentsList.querySelectorAll('.delete-comment-button').forEach(button => {
-                            button.addEventListener('click', (e) => {
-                                const commentEl = e.target.closest('.comment');
-                                if (commentEl) {
-                                    const commentId = commentEl.dataset.commentId;
-                                    deleteComment(post.id, commentId);
-                                }
-                            });
-                        });
-                    }
-                }
-            });
-            
-            console.log(`Updated comments for all posts`);
         });
     };
 
@@ -477,10 +427,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const userAvatar = createUserAvatar(post.userId, post.username);
             postHeaderHtml = `
                 <div class="post-header">
-                    <div class="post-avatar">
+                    <div class="post-avatar" data-user-id="${post.userId}" style="cursor: pointer;">
                         <div class="avatar-placeholder">${userAvatar}</div>
                     </div>
-                    <span class="post-username">${post.username}</span>
+                    <span class="post-username" data-user-id="${post.userId}" style="cursor: pointer;">${post.username}</span>
                     <span class="post-role">(${post.userRole === 'admin' ? 'مدیر' : 'کاربر'})</span>
                 </div>
             `;
@@ -534,11 +484,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         return `
                             <div class="comment" data-comment-id="${comment.id}">
                                 <div class="comment-header">
-                                    <div class="comment-avatar">
+                                    <div class="comment-avatar" data-user-id="${comment.userId}" style="cursor: pointer;">
                                         <div class="avatar-placeholder small">${commentUserAvatar}</div>
                                     </div>
                                     <div class="comment-info">
-                                        <span class="comment-author">${comment.username}</span>
+                                        <span class="comment-author" data-user-id="${comment.userId}" style="cursor: pointer;">${comment.username}</span>
                                         <span class="comment-time">${comment.timestamp ? (comment.timestamp.toDate ? comment.timestamp.toDate().toLocaleString('fa-IR') : comment.timestamp.toLocaleString('fa-IR')) : ''}</span>
                                     </div>
                                 </div>
@@ -564,6 +514,16 @@ document.addEventListener('DOMContentLoaded', () => {
         postCard.querySelector('.comment-toggle-button').addEventListener('click', (e) => toggleComments(e));
         postCard.querySelector('.add-comment-form').addEventListener('submit', (e) => addComment(e, post.id));
         
+        // Add click listeners for profile photos and usernames
+        const postAvatar = postCard.querySelector('.post-avatar');
+        const postUsername = postCard.querySelector('.post-username');
+        if (postAvatar) {
+            postAvatar.addEventListener('click', () => showUserProfile(post.userId));
+        }
+        if (postUsername) {
+            postUsername.addEventListener('click', () => showUserProfile(post.userId));
+        }
+        
         // Debug info (optional - can be removed)
         if (currentUser) {
             console.log(`Post ${post.id} - Can delete: ${canDeletePost}`);
@@ -583,8 +543,100 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+        
+        // Add click listeners for comment avatars and usernames
+        postCard.querySelectorAll('.comment-avatar, .comment-author').forEach(element => {
+            element.addEventListener('click', () => {
+                const userId = element.dataset.userId;
+                if (userId) {
+                    showUserProfile(userId);
+                }
+            });
+        });
 
         return postCard;
+    };
+
+    const showUserProfile = async (userId) => {
+        console.log('Showing profile for user:', userId);
+        
+        try {
+            // Load user profile data
+            const userProfileData = await loadUserProfile(userId);
+            if (!userProfileData) {
+                alert('اطلاعات کاربر یافت نشد');
+                return;
+            }
+            
+            // Load user's posts
+            const userPosts = posts.filter(post => post.userId === userId);
+            
+            // Create user profile modal
+            const modal = document.createElement('div');
+            modal.className = 'user-profile-modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>پروفایل کاربر</h2>
+                        <button class="close-modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="user-profile-info">
+                            <div class="user-avatar-large">
+                                <div class="avatar-placeholder large">${createUserAvatar(userId, userProfileData.username || userProfileData.email)}</div>
+                            </div>
+                            <div class="user-details">
+                                <h3>${userProfileData.username || userProfileData.email}</h3>
+                                <p class="user-bio">${userProfileData.bio || 'بیوگرافی ثبت نشده'}</p>
+                                <p class="user-role">نقش: ${userProfileData.role === 'admin' ? 'مدیر' : 'کاربر'}</p>
+                            </div>
+                        </div>
+                        <div class="user-posts-section">
+                            <h3>پست‌های کاربر (${userPosts.length})</h3>
+                            <div class="user-posts-list">
+                                ${userPosts.length > 0 ? userPosts.map(post => `
+                                    <div class="user-post-card">
+                                        <div class="post-content">
+                                            ${post.bookCoverURL ? `<img src="${post.bookCoverURL}" alt="Book Cover" class="book-cover-small">` : ''}
+                                            <h4 class="book-title">${post.bookTitle}</h4>
+                                            <p class="book-author">نویسنده: ${post.bookAuthor}</p>
+                                            <blockquote class="book-quote">"${post.bookQuote}"</blockquote>
+                                        </div>
+                                        <div class="post-stats">
+                                            <span class="likes-count">❤️ ${post.likes || 0}</span>
+                                            <span class="comments-count">💬 ${post.comments ? post.comments.length : 0}</span>
+                                        </div>
+                                    </div>
+                                `).join('') : '<p class="no-posts">این کاربر هنوز پستی ارسال نکرده است.</p>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to page
+            document.body.appendChild(modal);
+            
+            // Add event listeners
+            modal.querySelector('.close-modal').addEventListener('click', () => {
+                modal.remove();
+            });
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+            
+            // Show modal with animation
+            setTimeout(() => {
+                modal.classList.add('show');
+            }, 10);
+            
+        } catch (error) {
+            console.error('Error showing user profile:', error);
+            alert('خطا در بارگذاری پروفایل کاربر');
+        }
     };
 
     const handleLike = async (e, postId) => {
