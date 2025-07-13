@@ -90,13 +90,23 @@ const logoutButton = document.getElementById('logout-button');
                 }, 15000); // 15 second timeout
                 
                 try {
-                    // Load all user profiles first
-                    loadAllUserProfiles().then(async () => {
-                        // Wait a bit for userProfile to be loaded if user is logged in
-                        if (currentUser) {
-                            await new Promise(resolve => setTimeout(resolve, 1000));
-                        }
-                        console.log('User profiles loaded, now loading posts...');
+                                // Load all user profiles first
+            loadAllUserProfiles().then(async () => {
+                // Wait a bit for userProfile to be loaded if user is logged in
+                if (currentUser) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                console.log('User profiles loaded, now loading posts...');
+                
+                // Re-render posts to update avatars with loaded profiles
+                if (posts.length > 0) {
+                    console.log('Re-rendering posts to update avatars...');
+                    renderPosts();
+                    // Also update existing avatars without full re-render
+                    setTimeout(() => {
+                        updateAllAvatars();
+                    }, 100);
+                }
                         
                         // Test Firebase connection first
                         console.log('Testing Firebase connection...');
@@ -257,11 +267,28 @@ const logoutButton = document.getElementById('logout-button');
                 console.log('Added current user to userProfiles:', userProfiles[currentUser.uid]);
             }
             
+            // Add default profiles for users who might not have profiles yet
+            if (posts.length > 0) {
+                posts.forEach(post => {
+                    if (!userProfiles[post.userId]) {
+                        userProfiles[post.userId] = {
+                            uid: post.userId,
+                            username: post.username || 'کاربر ناشناس',
+                            photoURL: null,
+                            role: post.userRole || 'کاربر'
+                        };
+                        console.log(`Added default profile for post author ${post.userId}:`, userProfiles[post.userId]);
+                    }
+                });
+            }
+            
             console.log(`Loaded ${Object.keys(userProfiles).length} user profiles:`, Object.keys(userProfiles));
             console.log('User profiles data:', userProfiles);
             return true;
-            } catch (error) {
+        } catch (error) {
             console.error('Error loading user profiles:', error);
+            // Initialize empty userProfiles to prevent errors
+            userProfiles = {};
             return false;
         }
     };
@@ -539,6 +566,11 @@ const logoutButton = document.getElementById('logout-button');
                 </div>
             `;
         }
+
+        // Update avatars after rendering posts
+        setTimeout(() => {
+            updateAllAvatars();
+        }, 50);
 
         updateAdminControls();
     };
@@ -1218,23 +1250,69 @@ const logoutButton = document.getElementById('logout-button');
     };
 
     const createUserAvatar = (userId, username) => {
-        // Simple version without userProfile dependency
-        const userProfileData = userProfiles[userId];
+        // Check if userProfiles is loaded and contains the user
+        const userProfileData = userProfiles && userProfiles[userId];
         
         console.log(`Creating avatar for user ${userId} (${username}):`, userProfileData);
-        console.log('Available userProfiles:', Object.keys(userProfiles));
-        console.log('userProfiles content:', userProfiles);
+        console.log('Available userProfiles:', userProfiles ? Object.keys(userProfiles) : 'Not loaded yet');
         
         if (userProfileData && userProfileData.photoURL) {
             // User has a profile photo (base64 or external URL)
-            console.log(`Using profile photo for ${username}:`, userProfileData.photoURL);
+            console.log(`Using profile photo for ${username}:`, userProfileData.photoURL.substring(0, 50) + '...');
             return `<img src="${userProfileData.photoURL}" alt="${username}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
         } else {
             // Show placeholder with user initial
             const initial = (username || 'U').charAt(0).toUpperCase();
             console.log(`Using placeholder for ${username}: ${initial}`);
-            return initial;
+            return `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold; border-radius: 50%; font-size: 1.2em;">${initial}</div>`;
         }
+    };
+
+    // Function to update all avatars when user profiles are loaded
+    const updateAllAvatars = () => {
+        console.log('Updating all avatars...');
+        console.log('Current userProfiles:', userProfiles);
+        
+        const avatarPlaceholders = document.querySelectorAll('.avatar-placeholder');
+        console.log(`Found ${avatarPlaceholders.length} avatar placeholders`);
+        
+        avatarPlaceholders.forEach((placeholder, index) => {
+            const postCard = placeholder.closest('.post-card');
+            if (postCard) {
+                const postId = postCard.dataset.postId;
+                const post = posts.find(p => p.id === postId);
+                if (post) {
+                    console.log(`Updating avatar ${index + 1} for post ${postId}, user: ${post.username}`);
+                    const newAvatar = createUserAvatar(post.userId, post.username);
+                    placeholder.innerHTML = newAvatar;
+                }
+            }
+        });
+        
+        // Update comment avatars too
+        const commentAvatars = document.querySelectorAll('.comment .avatar-placeholder');
+        console.log(`Found ${commentAvatars.length} comment avatar placeholders`);
+        
+        commentAvatars.forEach((placeholder, index) => {
+            const comment = placeholder.closest('.comment');
+            if (comment) {
+                const commentId = comment.dataset.commentId;
+                // Find the comment data
+                for (const post of posts) {
+                    if (post.comments) {
+                        const commentData = post.comments.find(c => c.id === commentId);
+                        if (commentData) {
+                            console.log(`Updating comment avatar ${index + 1} for comment ${commentId}, user: ${commentData.username}`);
+                            const newAvatar = createUserAvatar(commentData.userId, commentData.username);
+                            placeholder.innerHTML = newAvatar;
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+        
+        console.log('Avatar update completed');
     };
 
     // Edit Bio functionality
