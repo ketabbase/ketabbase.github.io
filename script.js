@@ -71,6 +71,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadPostsAndComments = () => {
         console.log('Loading posts and comments for all users...');
         
+        // Show loading state immediately
+        if (postsList) {
+            postsList.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>در حال بارگذاری پست‌ها...</p>
+                </div>
+            `;
+        }
+        
         // Load all user profiles first
         loadAllUserProfiles().then(() => {
             // Load posts with real-time listener
@@ -93,6 +103,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderPosts();
                 console.log(`Loaded ${newPosts.length} posts`);
             });
+        }).catch(error => {
+            console.error('Error loading posts:', error);
+            isLoadingPosts = false;
+            renderPosts();
         });
     };
 
@@ -386,8 +400,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 postsList.innerHTML = `
                     <div class="no-posts">
                         <span class="material-icons" style="font-size: 3em; color: #ccc; margin-bottom: 1rem;">book</span>
-                        <p>هنوز هیچ پستی وجود ندارد!</p>
-                        ${currentUser ? '<p>اولین پست خود را ارسال کنید.</p>' : '<p>برای ارسال پست وارد شوید.</p>'}
+                        <p>هنوز هیچ پستی ارسال نشده است!</p>
+                        ${currentUser ? '<p>اولین پست خود را ارسال کنید و تجربیات کتابخوانی خود را به اشتراک بگذارید.</p>' : '<p>برای ارسال پست و مشاهده محتوای دیگران وارد شوید.</p>'}
                     </div>
                 `;
             }
@@ -1280,14 +1294,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Firebase test failed:', error);
             }
         } else {
-            console.log('Clearing posts and user profile...');
-            posts = [];
+            console.log('User logged out, clearing user profile but keeping posts...');
             userProfile = null;
+            // Don't clear posts for guest users - they should still see posts
             renderPosts();
         }
         
         // Show appropriate screen based on auth state
-        const targetScreen = user ? 'feed-screen' : 'login-screen';
+        const targetScreen = user ? 'feed-screen' : 'feed-screen'; // Show feed for both logged in and guest users
         console.log('Showing screen:', targetScreen);
         
         // Add a small delay to ensure Firebase auth state is properly initialized
@@ -1411,9 +1425,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('==================================');
     };
 
-    // Initial setup
-    waitForFirebase();
-    
     // Start loading posts and comments immediately for all users
     const startLoadingPosts = () => {
         if (window.firebase && window.firebase.db) {
@@ -1428,6 +1439,9 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(startLoadingPosts, 100);
         }
     };
+    
+    // Initial setup
+    waitForFirebase();
     
     // Start loading posts immediately when Firebase is ready
     if (window.firebase && window.firebase.db) {
