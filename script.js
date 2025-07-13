@@ -91,8 +91,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 try {
                     // Load all user profiles first
-                    loadAllUserProfiles().then(() => {
+                    loadAllUserProfiles().then(async () => {
                         console.log('User profiles loaded, now loading posts...');
+                        
+                        // Test Firebase connection first
+                        console.log('Testing Firebase connection...');
+                        try {
+                            const testCollection = collection(window.firebase.db, 'test');
+                            const testDoc = await addDoc(testCollection, { test: true, timestamp: serverTimestamp() });
+                            console.log('Firebase connection test successful, created test doc:', testDoc.id);
+                            await deleteDoc(doc(window.firebase.db, 'test', testDoc.id));
+                            console.log('Test doc deleted successfully');
+                        } catch (testError) {
+                            console.error('Firebase connection test failed:', testError);
+                        }
+                        
+                        // Test if posts collection exists
+                        console.log('Testing posts collection...');
+                        try {
+                            const postsCollection = collection(window.firebase.db, 'posts');
+                            const postsSnapshot = await getDocs(postsCollection);
+                            console.log('Posts collection test - docs count:', postsSnapshot.docs.length);
+                            postsSnapshot.forEach(doc => {
+                                console.log('Existing post:', doc.id, doc.data());
+                            });
+                        } catch (postsTestError) {
+                            console.error('Posts collection test failed:', postsTestError);
+                        }
                         
                         // Load posts with real-time listener
                         const postsQuery = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
@@ -101,6 +126,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         const unsubscribe = onSnapshot(postsQuery, async (snapshot) => {
                             clearTimeout(timeout);
                             console.log('Posts snapshot received, docs count:', snapshot.docs.length);
+                            console.log('Snapshot metadata:', snapshot.metadata);
+                            console.log('Snapshot empty:', snapshot.empty);
+                            
                             const newPosts = [];
                             for (const doc of snapshot.docs) {
                                 const postData = { id: doc.id, ...doc.data() };
