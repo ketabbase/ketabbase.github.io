@@ -1429,5 +1429,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    startLoadingPosts();
+    // Start loading posts immediately when Firebase is ready
+    if (window.firebase && window.firebase.db) {
+        startLoadingPosts();
+    } else {
+        // Wait for Firebase to be ready
+        const checkFirebase = () => {
+            if (window.firebase && window.firebase.db) {
+                startLoadingPosts();
+            } else {
+                setTimeout(checkFirebase, 100);
+            }
+        };
+        checkFirebase();
+    }
 });
