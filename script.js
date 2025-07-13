@@ -1214,8 +1214,8 @@ document.addEventListener('DOMContentLoaded', () => {
             userProfiles[userId] = {
                 uid: currentUser.uid,
                 username: currentUser.displayName || currentUser.email,
-                photoURL: userProfile?.photoURL || null,
-                role: userProfile?.role || 'کاربر'
+                photoURL: null, // Will be updated when userProfile is loaded
+                role: 'کاربر'
             };
             console.log('Added current user to userProfiles:', userProfiles[userId]);
         }
@@ -1295,6 +1295,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!snapshot.empty) {
                 userProfile = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
                 
+                // Update userProfiles with current user data
+                if (currentUser && userProfiles[currentUser.uid]) {
+                    userProfiles[currentUser.uid].photoURL = userProfile.photoURL || null;
+                    userProfiles[currentUser.uid].role = userProfile.role || 'کاربر';
+                }
+                
                 // Update profile photo if exists (prefer base64 over external URLs)
                 if (userProfile.photoURL && userProfile.photoURL.startsWith('data:image')) {
                     console.log('Loading base64 profile photo');
@@ -1309,6 +1315,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 userProfile = { role: 'کاربر', bio: 'علاقه‌مند به ادبیات کلاسیک و فلسفه' };
+                
+                // Update userProfiles with default data
+                if (currentUser && userProfiles[currentUser.uid]) {
+                    userProfiles[currentUser.uid].photoURL = null;
+                    userProfiles[currentUser.uid].role = 'کاربر';
+                }
+                
                 updateProfilePhoto(null);
             }
         } catch (error) {
