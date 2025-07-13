@@ -92,6 +92,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     // Load all user profiles first
                     loadAllUserProfiles().then(async () => {
+                        // Wait a bit for userProfile to be loaded if user is logged in
+                        if (currentUser) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
                         console.log('User profiles loaded, now loading posts...');
                         
                         // Test Firebase connection first
@@ -1225,6 +1229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         console.log(`Creating avatar for user ${userId} (${username}):`, userProfileData);
         console.log('Available userProfiles:', Object.keys(userProfiles));
+        console.log('userProfiles content:', userProfiles);
         
         if (userProfileData && userProfileData.photoURL) {
             // User has a profile photo (base64 or external URL)
@@ -1300,6 +1305,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentUser && userProfiles[currentUser.uid]) {
                     userProfiles[currentUser.uid].photoURL = userProfile.photoURL || null;
                     userProfiles[currentUser.uid].role = userProfile.role || 'کاربر';
+                    console.log('Updated userProfiles with current user data:', userProfiles[currentUser.uid]);
                 }
                 
                 // Update profile photo if exists (prefer base64 over external URLs)
