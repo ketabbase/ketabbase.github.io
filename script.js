@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // بارگذاری همه پست‌ها و کامنت‌ها برای همه کاربران (مهمان و لاگین)
     const loadPostsAndComments = () => {
         console.log('Loading posts and comments for all users...');
+        console.log('Firebase db available:', !!window.firebase?.db);
         
         // Show loading state immediately
         if (postsList) {
@@ -83,12 +84,18 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Load all user profiles first
         loadAllUserProfiles().then(() => {
+            console.log('User profiles loaded, now loading posts...');
+            
             // Load posts with real-time listener
             const postsQuery = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
+            console.log('Posts query created:', postsQuery);
+            
             onSnapshot(postsQuery, async (snapshot) => {
+                console.log('Posts snapshot received, docs count:', snapshot.docs.length);
                 const newPosts = [];
                 for (const doc of snapshot.docs) {
                     const postData = { id: doc.id, ...doc.data() };
+                    console.log('Post data:', postData);
                     newPosts.push(postData);
                 }
                 
@@ -96,12 +103,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 posts = newPosts;
                 isLoadingPosts = false;
                 
+                console.log(`Updated posts array with ${newPosts.length} posts`);
+                
                 // Load comments for all posts before rendering
                 await loadCommentsForAllPosts();
                 
                 // Now render posts with comments
                 renderPosts();
                 console.log(`Loaded ${newPosts.length} posts`);
+            }, (error) => {
+                console.error('Error in posts snapshot:', error);
+                isLoadingPosts = false;
+                renderPosts();
             });
         }).catch(error => {
             console.error('Error loading posts:', error);
@@ -390,29 +403,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderPosts = () => {
         console.log('renderPosts called with', posts.length, 'posts');
         console.log('Posts data:', posts);
+        console.log('isLoadingPosts:', isLoadingPosts);
+        console.log('postsList element:', postsList);
         
         // Clear existing posts
-        postsList.innerHTML = '';
+        if (postsList) {
+            postsList.innerHTML = '';
+        }
         const userPostsList = document.querySelector('#profile-screen .user-posts-list');
         if (userPostsList) userPostsList.innerHTML = '';
 
         if (posts.length === 0) {
+            console.log('No posts found, showing appropriate message');
             // Check if we're still loading
             if (isLoadingPosts) {
-                postsList.innerHTML = `
-                    <div class="loading-state">
-                        <div class="loading-spinner"></div>
-                        <p>در حال بارگذاری پست‌ها...</p>
-                    </div>
-                `;
+                console.log('Still loading posts, showing loading state');
+                if (postsList) {
+                    postsList.innerHTML = `
+                        <div class="loading-state">
+                            <div class="loading-spinner"></div>
+                            <p>در حال بارگذاری پست‌ها...</p>
+                        </div>
+                    `;
+                }
             } else {
-                postsList.innerHTML = `
-                    <div class="no-posts">
-                        <span class="material-icons" style="font-size: 3em; color: #ccc; margin-bottom: 1rem;">book</span>
-                        <p>هنوز هیچ پستی ارسال نشده است!</p>
-                        ${currentUser ? '<p>اولین پست خود را ارسال کنید و تجربیات کتابخوانی خود را به اشتراک بگذارید.</p>' : '<p>برای ارسال پست و مشاهده محتوای دیگران وارد شوید.</p>'}
-                    </div>
-                `;
+                console.log('Not loading, showing no posts message');
+                if (postsList) {
+                    postsList.innerHTML = `
+                        <div class="no-posts">
+                            <span class="material-icons" style="font-size: 3em; color: #ccc; margin-bottom: 1rem;">book</span>
+                            <p>هنوز هیچ پستی ارسال نشده است!</p>
+                            ${currentUser ? '<p>اولین پست خود را ارسال کنید و تجربیات کتابخوانی خود را به اشتراک بگذارید.</p>' : '<p>برای ارسال پست و مشاهده محتوای دیگران وارد شوید.</p>'}
+                        </div>
+                    `;
+                }
             }
             return;
         }
@@ -1433,6 +1457,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Start loading posts and comments immediately for all users
     const startLoadingPosts = () => {
+        console.log('startLoadingPosts called');
+        console.log('Firebase available:', !!window.firebase);
+        console.log('Firebase db available:', !!window.firebase?.db);
+        
         if (window.firebase && window.firebase.db) {
             console.log('Starting to load posts and comments for all users...');
             loadPostsAndComments();
