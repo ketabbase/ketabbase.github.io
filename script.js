@@ -425,23 +425,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const maxSize = 5 * 1024 * 1024; // 5MB
                 if (bookCoverFile.size > maxSize) {
                     alert('حجم تصویر نباید بیشتر از 5 مگابایت باشد.');
+                    submitButton.textContent = originalButtonText;
+                    submitButton.disabled = false;
                     return;
                 }
-                
-                // Convert to base64 to avoid CORS issues
                 try {
-                    console.log('Converting image to base64...');
-                    const reader = new FileReader();
-                    const base64Promise = new Promise((resolve, reject) => {
-                        reader.onload = () => resolve(reader.result);
-                        reader.onerror = reject;
-                    });
-                    reader.readAsDataURL(bookCoverFile);
-                    bookCoverURL = await base64Promise;
-                    console.log('Image converted to base64 successfully');
-                } catch (base64Error) {
-                    console.error('Error converting image to base64:', base64Error);
-                    alert('خطا در پردازش تصویر. لطفاً بدون تصویر پست را ارسال کنید.');
+                    // Upload to Firebase Storage
+                    const storageRef = ref(window.firebase.storage, `post_covers/${currentUser.uid}_${Date.now()}_${bookCoverFile.name}`);
+                    const snapshot = await uploadBytes(storageRef, bookCoverFile);
+                    bookCoverURL = await getDownloadURL(snapshot.ref);
+                    console.log('Image uploaded to Firebase Storage:', bookCoverURL);
+                } catch (uploadError) {
+                    console.error('Error uploading image to Firebase Storage:', uploadError);
+                    alert('خطا در آپلود تصویر. لطفاً بدون تصویر پست را ارسال کنید.');
+                    submitButton.textContent = originalButtonText;
+                    submitButton.disabled = false;
                     return;
                 }
             }
