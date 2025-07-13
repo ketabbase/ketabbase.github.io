@@ -1220,15 +1220,15 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Added current user to userProfiles:', userProfiles[userId]);
         }
         
-        const userProfile = userProfiles[userId];
+        const userProfileData = userProfiles[userId];
         
-        console.log(`Creating avatar for user ${userId} (${username}):`, userProfile);
+        console.log(`Creating avatar for user ${userId} (${username}):`, userProfileData);
         console.log('Available userProfiles:', Object.keys(userProfiles));
         
-        if (userProfile && userProfile.photoURL) {
+        if (userProfileData && userProfileData.photoURL) {
             // User has a profile photo (base64 or external URL)
-            console.log(`Using profile photo for ${username}:`, userProfile.photoURL);
-            return `<img src="${userProfile.photoURL}" alt="${username}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+            console.log(`Using profile photo for ${username}:`, userProfileData.photoURL);
+            return `<img src="${userProfileData.photoURL}" alt="${username}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
         } else {
             // Show placeholder with user initial
             const initial = (username || 'U').charAt(0).toUpperCase();
