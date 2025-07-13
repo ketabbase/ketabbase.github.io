@@ -242,6 +242,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log(`Loaded profile for ${userData.username || userData.email}:`, userData);
             });
             
+            // Add current user if not in userProfiles
+            if (currentUser && !userProfiles[currentUser.uid]) {
+                userProfiles[currentUser.uid] = {
+                    uid: currentUser.uid,
+                    username: currentUser.displayName || currentUser.email,
+                    photoURL: null,
+                    role: 'کاربر'
+                };
+                console.log('Added current user to userProfiles:', userProfiles[currentUser.uid]);
+            }
+            
             console.log(`Loaded ${Object.keys(userProfiles).length} user profiles:`, Object.keys(userProfiles));
             console.log('User profiles data:', userProfiles);
             return true;
@@ -1209,17 +1220,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const createUserAvatar = (userId, username) => {
-        // If this is the current user and not in userProfiles, add them
-        if (currentUser && userId === currentUser.uid && !userProfiles[userId]) {
-            userProfiles[userId] = {
-                uid: currentUser.uid,
-                username: currentUser.displayName || currentUser.email,
-                photoURL: null, // Will be updated when userProfile is loaded
-                role: 'کاربر'
-            };
-            console.log('Added current user to userProfiles:', userProfiles[userId]);
-        }
-        
+        // Simple version without userProfile dependency
         const userProfileData = userProfiles[userId];
         
         console.log(`Creating avatar for user ${userId} (${username}):`, userProfileData);
