@@ -421,14 +421,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let bookCoverURL = '';
             
             if (bookCoverFile) {
-                // Check file size (max 5MB)
-                const maxSize = 5 * 1024 * 1024; // 5MB
-                if (bookCoverFile.size > maxSize) {
-                    alert('حجم تصویر نباید بیشتر از 5 مگابایت باشد.');
-                    submitButton.textContent = originalButtonText;
-                    submitButton.disabled = false;
-                    return;
-                }
                 try {
                     // Upload to Firebase Storage
                     const storageRef = ref(window.firebase.storage, `post_covers/${currentUser.uid}_${Date.now()}_${bookCoverFile.name}`);
