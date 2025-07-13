@@ -676,13 +676,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (postCard) {
                 const commentsList = postCard.querySelector('.comments-list');
                 if (commentsList) {
+                    const commentUserAvatar = createUserAvatar(currentUser.uid, tempComment.username);
                     const commentElement = document.createElement('div');
                     commentElement.className = 'comment';
                     commentElement.dataset.commentId = tempCommentId;
                     commentElement.innerHTML = `
                         <div class="comment-header">
-                            <span class="comment-author">${tempComment.username}</span>
-                            <span class="comment-time">${tempComment.timestamp.toLocaleString('fa-IR')}</span>
+                            <div class="comment-avatar">
+                                <div class="avatar-placeholder small">${commentUserAvatar}</div>
+                            </div>
+                            <div class="comment-info">
+                                <span class="comment-author">${tempComment.username}</span>
+                                <span class="comment-time">${tempComment.timestamp.toLocaleString('fa-IR')}</span>
+                            </div>
                         </div>
                         <div class="comment-text">${tempComment.text}</div>
                         <button class="delete-comment-button">
@@ -760,13 +766,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Add real comment to UI
                     const commentsList = postCard.querySelector('.comments-list');
                     if (commentsList) {
+                        const commentUserAvatar = createUserAvatar(realComment.userId, realComment.username);
                         const commentElement = document.createElement('div');
                         commentElement.className = 'comment';
                         commentElement.dataset.commentId = realComment.id;
                         commentElement.innerHTML = `
                             <div class="comment-header">
-                                <span class="comment-author">${realComment.username}</span>
-                                <span class="comment-time">${realComment.timestamp?.toLocaleString ? realComment.timestamp.toLocaleString('fa-IR') : ''}</span>
+                                <div class="comment-avatar">
+                                    <div class="avatar-placeholder small">${commentUserAvatar}</div>
+                                </div>
+                                <div class="comment-info">
+                                    <span class="comment-author">${realComment.username}</span>
+                                    <span class="comment-time">${realComment.timestamp?.toLocaleString ? realComment.timestamp.toLocaleString('fa-IR') : ''}</span>
+                                </div>
                             </div>
                             <div class="comment-text">${realComment.text}</div>
                             <button class="delete-comment-button">
@@ -1088,6 +1100,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const createUserAvatar = (userId, username) => {
+        // If this is the current user and not in userProfiles, add them
+        if (currentUser && userId === currentUser.uid && !userProfiles[userId]) {
+            userProfiles[userId] = {
+                uid: currentUser.uid,
+                username: currentUser.displayName || currentUser.email,
+                photoURL: userProfile?.photoURL || null,
+                role: userProfile?.role || 'کاربر'
+            };
+            console.log('Added current user to userProfiles:', userProfiles[userId]);
+        }
+        
         const userProfile = userProfiles[userId];
         
         console.log(`Creating avatar for user ${userId} (${username}):`, userProfile);
