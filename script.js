@@ -1,30 +1,30 @@
  // Firebase imports
-import {
-    signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
-    signOut,
+import { 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    signOut, 
     onAuthStateChanged,
-    updateProfile
+    updateProfile 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-import {
-    collection,
-    addDoc,
-    getDocs,
-    doc,
-    updateDoc,
-    deleteDoc,
-    query,
-    orderBy,
+import { 
+    collection, 
+    addDoc, 
+    getDocs, 
+    doc, 
+    updateDoc, 
+    deleteDoc, 
+    query, 
+    orderBy, 
     where,
     serverTimestamp,
-    onSnapshot
+    onSnapshot 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-import {
-    ref,
-    uploadBytes,
-    getDownloadURL
+import { 
+    ref, 
+    uploadBytes, 
+    getDownloadURL 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -37,12 +37,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const bookCoverPreview = document.getElementById('book-cover-preview');
     const feedScreen = document.getElementById('feed-screen');
     const postsList = feedScreen.querySelector('.posts-list');
-    const profileUsername = document.getElementById('profile-username');
-    const profileBio = document.getElementById('profile-bio');
-    const profileRole = document.getElementById('profile-role');
+const profileUsername = document.getElementById('profile-username');
+const profileBio = document.getElementById('profile-bio');
+const profileRole = document.getElementById('profile-role');
     const authForm = document.getElementById('auth-form');
     const registerButton = document.getElementById('register-button');
-    const logoutButton = document.getElementById('logout-button');
+const logoutButton = document.getElementById('logout-button');
     const loginNavButton = document.getElementById('login-nav-button');
     const editBioButton = document.querySelector('.edit-bio-button');
     const changePhotoButton = document.getElementById('change-photo-button');
@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Loaded ${Object.keys(userProfiles).length} user profiles:`, Object.keys(userProfiles));
             console.log('User profiles data:', userProfiles);
             return true;
-        } catch (error) {
+            } catch (error) {
             console.error('Error loading user profiles:', error);
             return false;
         }
@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
         navButtons.forEach(button => {
             if (button.dataset.target === screenId) {
                 button.classList.add('active');
-            } else {
+        } else {
                 button.classList.remove('active');
             }
         });
@@ -304,13 +304,13 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Showing feed screen, current user:', currentUser ? 'logged in' : 'guest');
             // Render posts if they exist
             if (posts.length > 0 || !isLoadingPosts) {
-                renderPosts();
-            }
+            renderPosts();
         }
+}
 
         // Update login/logout button visibility and profile info
         if (currentUser) {
-            loginNavButton.style.display = 'none';
+        loginNavButton.style.display = 'none';
             logoutButton.style.display = 'block';
             profileUsername.textContent = currentUser.displayName || currentUser.email;
             profileRole.textContent = userProfile?.role || 'کاربر';
@@ -326,8 +326,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateProfilePhoto(userProfile.photoURL);
             } else {
                 updateProfilePhoto(null);
-            }
-        } else {
+        }
+    } else {
             loginNavButton.style.display = 'flex';
             logoutButton.style.display = 'none';
             profileUsername.textContent = 'کاربر مهمان';
@@ -399,17 +399,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle New Post Submission
     newPostForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-
-        if (!currentUser) {
+    
+    if (!currentUser) {
             alert('برای ارسال پست باید وارد شوید.');
             showScreen('login-screen');
-            return;
-        }
-
-        const bookTitle = document.getElementById('book-title').value;
-        const bookAuthor = document.getElementById('book-author').value;
-        const bookQuote = document.getElementById('book-quote').value;
-        const bookCoverFile = document.getElementById('book-cover-upload').files[0];
+        return;
+    }
+    
+    const bookTitle = document.getElementById('book-title').value;
+    const bookAuthor = document.getElementById('book-author').value;
+    const bookQuote = document.getElementById('book-quote').value;
+    const bookCoverFile = document.getElementById('book-cover-upload').files[0];
 
         // Show loading state
         const submitButton = newPostForm.querySelector('button[type="submit"]');
@@ -419,8 +419,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             let bookCoverURL = '';
-            
-            if (bookCoverFile) {
+        
+        if (bookCoverFile) {
                 // Convert to base64 to avoid CORS issues
                 try {
                     const reader = new FileReader();
@@ -438,32 +438,32 @@ document.addEventListener('DOMContentLoaded', () => {
                     submitButton.disabled = false;
                     return;
                 }
-            }
-
-            const postData = {
-                bookTitle,
-                bookAuthor,
-                bookQuote,
-                bookCoverURL,
-                userId: currentUser.uid,
-                username: currentUser.displayName || currentUser.email,
+        }
+        
+        const postData = {
+            bookTitle,
+            bookAuthor,
+            bookQuote,
+            bookCoverURL,
+            userId: currentUser.uid,
+            username: currentUser.displayName || currentUser.email,
                 userRole: userProfile?.role || 'کاربر',
-                likes: 0,
+            likes: 0,
                 likedBy: [],
                 comments: [],
-                timestamp: serverTimestamp()
-            };
-
-            await addDoc(collection(window.firebase.db, 'posts'), postData);
-            
-            newPostForm.reset();
+            timestamp: serverTimestamp()
+        };
+        
+        await addDoc(collection(window.firebase.db, 'posts'), postData);
+        
+        newPostForm.reset();
             bookCoverPreview.style.display = 'none';
             bookCoverPreview.src = '#';
             showScreen('feed-screen');
-            
-        } catch (error) {
-            console.error('Error creating post:', error);
-            alert('خطا در ایجاد پست');
+        
+    } catch (error) {
+        console.error('Error creating post:', error);
+        alert('خطا در ایجاد پست');
         } finally {
             // Reset loading state
             submitButton.textContent = originalButtonText;
@@ -552,13 +552,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isProfileView) {
             const userAvatar = createUserAvatar(post.userId, post.username);
             postHeaderHtml = `
-                <div class="post-header">
+            <div class="post-header">
                     <div class="post-avatar">
                         <div class="avatar-placeholder">${userAvatar}</div>
                     </div>
-                    <span class="post-username">${post.username}</span>
+                <span class="post-username">${post.username}</span>
                     <span class="post-role">(${post.userRole === 'admin' ? 'مدیر' : 'کاربر'})</span>
-                </div>
+            </div>
             `;
         }
 
@@ -612,11 +612,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="comment-header">
                                     <div class="comment-avatar">
                                         <div class="avatar-placeholder small">${commentUserAvatar}</div>
-                                    </div>
+            </div>
                                     <div class="comment-info">
                                         <span class="comment-author">${comment.username}</span>
                                         <span class="comment-time">${comment.timestamp ? (comment.timestamp.toDate ? comment.timestamp.toDate().toLocaleString('fa-IR') : comment.timestamp.toLocaleString('fa-IR')) : ''}</span>
-                                    </div>
+        </div>
                                 </div>
                                 <div class="comment-text">${comment.text}</div>
                                 ${canDeleteComment ? 
@@ -624,10 +624,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <span class="material-icons">close</span>
                                     </button>` : ''
                                 }
-                            </div>
+            </div>
                         `;
                     }).join('') : ''}
-                </div>
+            </div>
                 <form class="add-comment-form">
                     <input type="text" placeholder="نظر خود را بنویسید..." class="comment-input">
                     <button type="submit">ارسال</button>
@@ -672,12 +672,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     const handleLike = async (e, postId) => {
-        if (!currentUser) {
+    if (!currentUser) {
             console.log('User not logged in, cannot like post');
             showScreen('login-screen');
-            return;
-        }
-
+        return;
+    }
+    
         const post = posts.find(p => p.id === postId);
         if (!post) return;
 
@@ -727,7 +727,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 likes: newLikes,
                 likedBy: newLikedBy
             });
-        } catch (error) {
+    } catch (error) {
             console.error('Error liking/unliking post:', error);
             // Revert UI changes if Firebase update fails
             if (userLiked) {
@@ -745,29 +745,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const toggleComments = (e) => {
         const commentsSection = e.currentTarget.closest('.post-card').querySelector('.comments-section');
-        if (commentsSection) {
-            commentsSection.style.display = commentsSection.style.display === 'none' ? 'block' : 'none';
-        }
-    };
+    if (commentsSection) {
+        commentsSection.style.display = commentsSection.style.display === 'none' ? 'block' : 'none';
+    }
+};
 
     const addComment = async (e, postId) => {
-        e.preventDefault();
+    e.preventDefault();
         console.log('Adding comment for post:', postId);
-        
-        if (!currentUser) {
+    
+    if (!currentUser) {
             console.log('User not logged in, cannot add comment');
             showScreen('login-screen');
-            return;
-        }
-        
-        const commentInput = e.target.querySelector('.comment-input');
-        const commentText = commentInput.value.trim();
+        return;
+    }
+    
+    const commentInput = e.target.querySelector('.comment-input');
+    const commentText = commentInput.value.trim();
         
         console.log('Comment text:', commentText);
         console.log('Comment input element:', commentInput);
-        
-        if (!commentText) return;
-
+    
+    if (!commentText) return;
+    
         // Clear input immediately for better UX
         commentInput.value = '';
         commentInput.focus(); // Keep focus on input
@@ -844,14 +844,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Save to Firebase
         try {
             console.log('Saving to Firebase...');
-            const commentData = {
-                postId,
-                userId: currentUser.uid,
-                username: currentUser.displayName || currentUser.email,
-                text: commentText,
-                timestamp: serverTimestamp()
-            };
-
+        const commentData = {
+            postId,
+            userId: currentUser.uid,
+            username: currentUser.displayName || currentUser.email,
+            text: commentText,
+            timestamp: serverTimestamp()
+        };
+        
             console.log('Comment data for Firebase:', commentData);
             const docRef = await addDoc(collection(window.firebase.db, 'comments'), commentData);
             console.log('Comment saved with ID:', docRef.id);
@@ -938,9 +938,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Alternative method: reset the form
             e.target.reset();
             console.log('Form reset completed');
-            
-        } catch (error) {
-            console.error('Error adding comment:', error);
+        
+    } catch (error) {
+        console.error('Error adding comment:', error);
             
             // Remove the optimistic comment if it failed
             if (post) {
@@ -969,8 +969,8 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('برای حذف پست باید وارد شوید.');
             return;
         }
-        
-        const post = posts.find(p => p.id === postId);
+    
+    const post = posts.find(p => p.id === postId);
         if (!post) {
             alert('پست یافت نشد.');
             return;
@@ -982,9 +982,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!isAdmin && !isPostAuthor) {
             alert('شما دسترسی حذف این پست را ندارید.');
-            return;
-        }
-        
+        return;
+    }
+    
         if (confirm('آیا مطمئن هستید که می‌خواهید این پست را حذف کنید؟\n\nاین عمل غیرقابل بازگشت است و تمام کامنت‌های مربوطه نیز حذف خواهند شد.')) {
             try {
                 // First, delete all comments for this post
@@ -997,14 +997,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 // Then delete the post
-                await deleteDoc(doc(window.firebase.db, 'posts', postId));
+            await deleteDoc(doc(window.firebase.db, 'posts', postId));
                 console.log(`Post ${postId} deleted successfully by ${isAdmin ? 'admin' : 'author'}`);
-            } catch (error) {
-                console.error('Error deleting post:', error);
-                alert('خطا در حذف پست');
-            }
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            alert('خطا در حذف پست');
         }
-    };
+    }
+};
 
     const deleteComment = async (postId, commentId) => {
         if (!currentUser) {
@@ -1111,7 +1111,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Change Profile Photo functionality
     changePhotoButton.addEventListener('click', () => {
-        if (!currentUser) return;
+    if (!currentUser) return;
         profilePhotoUpload.click();
     });
 
@@ -1144,12 +1144,12 @@ document.addEventListener('DOMContentLoaded', () => {
             updateProfilePhoto(photoURL);
 
             // Save to Firestore
-            const usersRef = collection(window.firebase.db, 'users');
-            const q = query(usersRef, where('uid', '==', currentUser.uid));
-            const snapshot = await getDocs(q);
-            
-            if (!snapshot.empty) {
-                const userDoc = snapshot.docs[0];
+        const usersRef = collection(window.firebase.db, 'users');
+        const q = query(usersRef, where('uid', '==', currentUser.uid));
+        const snapshot = await getDocs(q);
+        
+        if (!snapshot.empty) {
+            const userDoc = snapshot.docs[0];
                 await updateDoc(doc(window.firebase.db, 'users', userDoc.id), { 
                     photoURL: photoURL,
                     // Remove old Firebase Storage URL if exists
@@ -1259,10 +1259,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 profileBio.innerHTML = newBio;
                 editBioButton.innerHTML = '<span class="material-icons">edit</span> ویرایش بیو';
-            } catch (error) {
-                console.error('Error updating bio:', error);
-                alert('خطا در به‌روزرسانی بیو');
-            }
+    } catch (error) {
+        console.error('Error updating bio:', error);
+        alert('خطا در به‌روزرسانی بیو');
+    }
         } else {
             // Enter edit mode
             const currentBio = profileBio.textContent;
