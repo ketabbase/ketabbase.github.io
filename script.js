@@ -1087,8 +1087,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const createUserAvatar = (userId, username) => {
         const userProfile = userProfiles[userId];
         
-        if (userProfile && userProfile.photoURL && userProfile.photoURL.startsWith('data:image')) {
-            // User has a base64 profile photo
+        if (userProfile && userProfile.photoURL) {
+            // User has a profile photo (base64 or external URL)
             return `<img src="${userProfile.photoURL}" alt="${username}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
         } else {
             // Show placeholder with user initial
