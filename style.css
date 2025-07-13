@@ -727,6 +727,38 @@ main {
     .action-button {
         font-size: 0.9em;
         padding: 4px 8px;
+    }
 }
+
+/* Offline Message */
+.offline-message {
+    text-align: center;
+    padding: 40px 20px;
+    background-color: var(--card-background);
+    border-radius: 10px;
+    box-shadow: 0 2px 10px var(--shadow-color);
+    border: 1px solid var(--border-color);
+}
+
+.offline-message p {
+    margin: 10px 0;
+    color: #666;
+    font-size: 0.9em;
+}
+
+.offline-message button {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Vazirmatn', sans-serif;
+    font-size: 0.9em;
+    transition: background-color 0.3s ease;
+}
+
+.offline-message button:hover {
+    background: #8a3d25;
 }
 

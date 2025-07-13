@@ -82,44 +82,78 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
         
-        // Load all user profiles first
-        loadAllUserProfiles().then(() => {
-            console.log('User profiles loaded, now loading posts...');
-            
-            // Load posts with real-time listener
-            const postsQuery = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
-            console.log('Posts query created:', postsQuery);
-            
-            onSnapshot(postsQuery, async (snapshot) => {
-                console.log('Posts snapshot received, docs count:', snapshot.docs.length);
-                const newPosts = [];
-                for (const doc of snapshot.docs) {
-                    const postData = { id: doc.id, ...doc.data() };
-                    console.log('Post data:', postData);
-                    newPosts.push(postData);
+        // Try to load posts with timeout
+        const loadPostsWithTimeout = () => {
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error('Firebase connection timeout'));
+                }, 15000); // 15 second timeout
+                
+                try {
+                    // Load all user profiles first
+                    loadAllUserProfiles().then(() => {
+                        console.log('User profiles loaded, now loading posts...');
+                        
+                        // Load posts with real-time listener
+                        const postsQuery = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
+                        console.log('Posts query created:', postsQuery);
+                        
+                        const unsubscribe = onSnapshot(postsQuery, async (snapshot) => {
+                            clearTimeout(timeout);
+                            console.log('Posts snapshot received, docs count:', snapshot.docs.length);
+                            const newPosts = [];
+                            for (const doc of snapshot.docs) {
+                                const postData = { id: doc.id, ...doc.data() };
+                                console.log('Post data:', postData);
+                                newPosts.push(postData);
+                            }
+                            
+                            // Update posts immediately
+                            posts = newPosts;
+                            isLoadingPosts = false;
+                            
+                            console.log(`Updated posts array with ${newPosts.length} posts`);
+                            
+                            // Load comments for all posts before rendering
+                            await loadCommentsForAllPosts();
+                            
+                            // Now render posts with comments
+                            renderPosts();
+                            console.log(`Loaded ${newPosts.length} posts`);
+                            resolve();
+                        }, (error) => {
+                            clearTimeout(timeout);
+                            console.error('Error in posts snapshot:', error);
+                            reject(error);
+                        });
+                    }).catch(error => {
+                        clearTimeout(timeout);
+                        console.error('Error loading user profiles:', error);
+                        reject(error);
+                    });
+                } catch (error) {
+                    clearTimeout(timeout);
+                    console.error('Error in loadPostsWithTimeout:', error);
+                    reject(error);
                 }
-                
-                // Update posts immediately
-                posts = newPosts;
-                isLoadingPosts = false;
-                
-                console.log(`Updated posts array with ${newPosts.length} posts`);
-                
-                // Load comments for all posts before rendering
-                await loadCommentsForAllPosts();
-                
-                // Now render posts with comments
-                renderPosts();
-                console.log(`Loaded ${newPosts.length} posts`);
-            }, (error) => {
-                console.error('Error in posts snapshot:', error);
-                isLoadingPosts = false;
-                renderPosts();
             });
-        }).catch(error => {
-            console.error('Error loading posts:', error);
+        };
+        
+        // Try to load posts, fallback to offline message if failed
+        loadPostsWithTimeout().catch(error => {
+            console.error('Failed to load posts:', error);
             isLoadingPosts = false;
-            renderPosts();
+            
+            if (postsList) {
+                postsList.innerHTML = `
+                    <div class="offline-message">
+                        <span class="material-icons" style="font-size: 3em; color: #ff6b6b; margin-bottom: 1rem;">wifi_off</span>
+                        <p>خطا در اتصال به سرور</p>
+                        <p>لطفاً اتصال اینترنت خود را بررسی کنید و صفحه را refresh کنید.</p>
+                        <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">تلاش مجدد</button>
+                    </div>
+                `;
+            }
         });
     };
 
