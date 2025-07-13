@@ -208,6 +208,15 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             addPostButton.style.display = 'none';
         }
+        
+        // Show feed screen for all users (guest and logged in)
+        if (screenId === 'feed-screen') {
+            console.log('Showing feed screen, current user:', currentUser ? 'logged in' : 'guest');
+            // Render posts if they exist
+            if (posts.length > 0 || !isLoadingPosts) {
+                renderPosts();
+            }
+        }
 
         // Update login/logout button visibility and profile info
         if (currentUser) {
@@ -1369,14 +1378,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Check for auto-login
             await checkAutoLogin();
             
-            // Set a timeout to show login screen if no auth state is detected
+            // Show feed screen for all users (guest and logged in)
             setTimeout(() => {
-                const currentAuthUser = checkCurrentAuthState();
-                if (!currentUser && !currentAuthUser) {
-                    console.log('No auth state detected after timeout, showing login screen');
-                    showScreen('login-screen');
-                }
-            }, 3000); // Wait 3 seconds for Firebase to restore auth state
+                console.log('Showing feed screen for all users');
+                showScreen('feed-screen');
+            }, 1000); // Wait 1 second for Firebase to restore auth state
             
             // Auth listener is already set up above
         } else {
@@ -1440,16 +1446,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    // Initial setup
-    waitForFirebase();
-    
-    // Start loading posts immediately when Firebase is ready
+    // Initial setup - start loading posts immediately
     if (window.firebase && window.firebase.db) {
+        console.log('Firebase ready, starting to load posts...');
         startLoadingPosts();
     } else {
-        // Wait for Firebase to be ready
+        console.log('Firebase not ready, waiting...');
         const checkFirebase = () => {
             if (window.firebase && window.firebase.db) {
+                console.log('Firebase ready, starting to load posts...');
                 startLoadingPosts();
             } else {
                 setTimeout(checkFirebase, 100);
@@ -1457,4 +1462,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         checkFirebase();
     }
+    
+    // Wait for Firebase to initialize auth
+    waitForFirebase();
 });
