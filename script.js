@@ -142,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const loadAllUserProfiles = async () => {
         try {
+            console.log('Loading all user profiles...');
             const usersRef = collection(window.firebase.db, 'users');
             const snapshot = await getDocs(usersRef);
             
@@ -149,9 +150,11 @@ document.addEventListener('DOMContentLoaded', () => {
             snapshot.forEach((doc) => {
                 const userData = doc.data();
                 userProfiles[userData.uid] = userData;
+                console.log(`Loaded profile for ${userData.username || userData.email}:`, userData);
             });
             
-            console.log(`Loaded ${Object.keys(userProfiles).length} user profiles`);
+            console.log(`Loaded ${Object.keys(userProfiles).length} user profiles:`, Object.keys(userProfiles));
+            console.log('User profiles data:', userProfiles);
             return true;
         } catch (error) {
             console.error('Error loading user profiles:', error);
@@ -1087,12 +1090,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const createUserAvatar = (userId, username) => {
         const userProfile = userProfiles[userId];
         
+        console.log(`Creating avatar for user ${userId} (${username}):`, userProfile);
+        console.log('Available userProfiles:', Object.keys(userProfiles));
+        
         if (userProfile && userProfile.photoURL) {
             // User has a profile photo (base64 or external URL)
+            console.log(`Using profile photo for ${username}:`, userProfile.photoURL);
             return `<img src="${userProfile.photoURL}" alt="${username}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
         } else {
             // Show placeholder with user initial
             const initial = (username || 'U').charAt(0).toUpperCase();
+            console.log(`Using placeholder for ${username}: ${initial}`);
             return initial;
         }
     };
