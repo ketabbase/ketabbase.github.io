@@ -964,7 +964,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 uid: userCredential.user.uid,
                 username: usernameInput,
                 email: userCredential.user.email,
-                bio: 'عضو جدید کتاب‌گرد هستم!',
+                bio: 'عضو جدید کتاب‌بورد هستم!',
                 role: 'کاربر',
                 createdAt: serverTimestamp()
             });
@@ -1172,7 +1172,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentUser && currentUser.email === 'ketabbase@ketabgard.com') {
                 userProfile = { 
                     role: 'admin', 
-                    bio: 'مدیر سیستم کتاب‌گرد',
+                    bio: 'مدیر سیستم کتاب‌بورد',
                     username: 'ketabbase'
                 };
                 console.log('Admin user detected: ketabbase');
