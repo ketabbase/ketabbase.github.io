@@ -485,7 +485,7 @@ const logoutButton = document.getElementById('logout-button');
                 alert('خطا در پردازش تصویر. لطفاً بدون تصویر پست را ارسال کنید.');
                 submitButton.textContent = originalButtonText;
                 submitButton.disabled = false;
-                return;                }
+                return;                
             }
         }
         
