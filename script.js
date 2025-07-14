@@ -1175,101 +1175,94 @@ const logoutButton = document.getElementById('logout-button');
     });
 
     profilePhotoUpload.addEventListener('change', async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        // Check file size (max 5MB)
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        if (file.size > maxSize) {
-            alert('حجم تصویر نباید بیشتر از 5 مگابایت باشد.');
-            return;
-        }
-
-        try {
-            // Show loading state
-            changePhotoButton.innerHTML = '<span class="material-icons">hourglass_empty</span>';
-            changePhotoButton.disabled = true;
-
-            // Convert to base64
-            const reader = new FileReader();
-            const base64Promise = new Promise((resolve, reject) => {
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-            });
-            reader.readAsDataURL(file);
-            const photoURL = await base64Promise;
-
-            // Update UI immediately
-            updateProfilePhoto(photoURL);
-
-            // Save to Firestore
-        const usersRef = collection(window.firebase.db, 'users');
-        const q = query(usersRef, where('uid', '==', currentUser.uid));
-        const snapshot = await getDocs(q);
+            const file = event.target.files[0];
+            if (!file) return;
         
-        if (!snapshot.empty) {
-            const userDoc = snapshot.docs[0];
-                await updateDoc(doc(window.firebase.db, 'users', userDoc.id), { 
-                    photoURL: photoURL,
-                    // Remove old Firebase Storage URL if exists
-                    profilePhotoURL: null
-                });
-                userProfile.photoURL = photoURL;
-                userProfile.profilePhotoURL = null; // Clear old URL
+            // Check file size (max 5MB)
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            if (file.size > maxSize) {
+                alert('حجم تصویر نباید بیشتر از 5 مگابایت باشد.');
+                return;
             }
-
-            console.log('Profile photo updated successfully with base64');
-        } catch (error) {
-            console.error('Error updating profile photo:', error);
-            alert('خطا در به‌روزرسانی عکس پروفایل');
-        } finally {
-            // Reset button state
-            changePhotoButton.innerHTML = '<span class="material-icons">photo_camera</span>';
-            changePhotoButton.disabled = false;
-        }
-    });
-
-    const updateProfilePhoto = (photoURL) => {
-        console.log('Updating profile photo with URL:', photoURL ? photoURL.substring(0, 50) + '...' : 'null');
         
-        if (photoURL && photoURL.startsWith('data:image')) {
-            // Base64 image - safe to use
-            const img = document.createElement('img');
-            img.src = photoURL;
-            img.alt = 'Profile Photo';
-            img.onerror = () => {
-                console.error('Failed to load profile image');
-                showPlaceholder();
-            };
+            try {
+                // Show loading state
+                changePhotoButton.innerHTML = '<span class="material-icons">hourglass_empty</span>';
+                changePhotoButton.disabled = true;
+        
+                // فشرده‌سازی و تغییر اندازه قبل از تبدیل به base64
+                const photoURL = await resizeAndCompressImage(file, 128, 0.7);
+        
+                // Update UI immediately
+                updateProfilePhoto(photoURL);
+        
+                // Save to Firestore
+                const usersRef = collection(window.firebase.db, 'users');
+                const q = query(usersRef, where('uid', '==', currentUser.uid));
+                const snapshot = await getDocs(q);
+                
+                if (!snapshot.empty) {
+                    const userDoc = snapshot.docs[0];
+                    await updateDoc(doc(window.firebase.db, 'users', userDoc.id), { 
+                        photoURL: photoURL,
+                        // Remove old Firebase Storage URL if exists
+                        profilePhotoURL: null
+                    });
+                    userProfile.photoURL = photoURL;
+                    userProfile.profilePhotoURL = null; // Clear old URL
+                }
+        
+                console.log('Profile photo updated successfully with base64');
+            } catch (error) {
+                console.error('Error updating profile photo:', error);
+                alert('خطا در به‌روزرسانی عکس پروفایل');
+            } finally {
+                // Reset button state
+                changePhotoButton.innerHTML = '<span class="material-icons">photo_camera</span>';
+                changePhotoButton.disabled = false;
+            }
+        });
+        
+        const updateProfilePhoto = (photoURL) => {
+            console.log('Updating profile photo with URL:', photoURL ? photoURL.substring(0, 50) + '...' : 'null');
             
-            // Clear existing content and add image
-            profileAvatar.innerHTML = '';
-            profileAvatar.appendChild(img);
-            console.log('Base64 image loaded successfully');
-        } else if (photoURL && photoURL.startsWith('https://')) {
-            // External URL - might have CORS issues
-            console.log('External URL detected, trying to load...');
-            const img = document.createElement('img');
-            img.crossOrigin = 'anonymous';
-            img.src = photoURL;
-            img.alt = 'Profile Photo';
-            img.onerror = () => {
-                console.error('Failed to load external image, showing placeholder');
+            if (photoURL && photoURL.startsWith('data:image')) {
+                // Base64 image - safe to use
+                const img = document.createElement('img');
+                img.src = photoURL;
+                img.alt = 'Profile Photo';
+                img.loading = 'lazy';
+                img.onerror = () => {
+                    console.error('Failed to load profile image');
+                    showPlaceholder();
+                };
+                // Clear existing content and add image
+                profileAvatar.innerHTML = '';
+                profileAvatar.appendChild(img);
+                console.log('Base64 image loaded successfully');
+            } else if (photoURL && photoURL.startsWith('https://')) {
+                // External URL - might have CORS issues
+                console.log('External URL detected, trying to load...');
+                const img = document.createElement('img');
+                img.crossOrigin = 'anonymous';
+                img.src = photoURL;
+                img.alt = 'Profile Photo';
+                img.loading = 'lazy';
+                img.onerror = () => {
+                    console.error('Failed to load external image, showing placeholder');
+                    showPlaceholder();
+                };
+                img.onload = () => {
+                    console.log('External image loaded successfully');
+                };
+                // Clear existing content and add image
+                profileAvatar.innerHTML = '';
+                profileAvatar.appendChild(img);
+            } else {
+                // No photo or invalid URL - show placeholder
                 showPlaceholder();
-            };
-            img.onload = () => {
-                console.log('External image loaded successfully');
-            };
-            
-            // Clear existing content and add image
-            profileAvatar.innerHTML = '';
-            profileAvatar.appendChild(img);
-        } else {
-            // No photo or invalid URL - show placeholder
-            showPlaceholder();
-        }
-    };
-
+            }
+        };
     const showPlaceholder = () => {
         const initial = (currentUser?.displayName || currentUser?.email || 'U').charAt(0).toUpperCase();
         profileAvatar.innerHTML = initial;
