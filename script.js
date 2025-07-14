@@ -155,7 +155,8 @@ const logoutButton = document.getElementById('logout-button');
                             isLoadingPosts = false;
                             
                             // Shuffle posts before rendering
-                            shuffleArray(posts);
+                            // Remove this line to show posts by newest first (default order)
+                            // shuffleArray(posts);
 
                             console.log(`Updated posts array with ${newPosts.length} posts`);
                             
