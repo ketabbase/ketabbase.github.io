@@ -185,17 +185,6 @@ const logoutButton = document.getElementById('logout-button');
         loadPostsWithTimeout().catch(error => {
             console.error('Failed to load posts:', error);
             isLoadingPosts = false;
-            
-            if (postsList) {
-                postsList.innerHTML = `
-                    <div class="offline-message">
-                        <span class="material-icons" style="font-size: 3em; color: #ff6b6b; margin-bottom: 1rem;">wifi_off</span>
-                        <p>خطا در اتصال به سرور</p>
-                        <p>لطفاً اتصال اینترنت خود را بررسی کنید و صفحه را refresh کنید.</p>
-                        <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">تلاش مجدد</button>
-                    </div>
-                `;
-            }
         });
     };
 
