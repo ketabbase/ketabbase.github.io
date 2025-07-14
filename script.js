@@ -154,6 +154,9 @@ const logoutButton = document.getElementById('logout-button');
                             posts = newPosts;
                             isLoadingPosts = false;
                             
+                            // Shuffle posts before rendering
+                            shuffleArray(posts);
+
                             console.log(`Updated posts array with ${newPosts.length} posts`);
                             
                             // Load comments for all posts before rendering
@@ -1502,6 +1505,14 @@ const logoutButton = document.getElementById('logout-button');
             }, 30000); // Check every 30 seconds
         }
     });
+
+    // Utility function to shuffle an array (Fisher-Yates)
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
 
     // Function to check if user should be automatically logged in
     const checkAutoLogin = async () => {
