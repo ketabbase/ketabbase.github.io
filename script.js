@@ -477,23 +477,16 @@ const logoutButton = document.getElementById('logout-button');
             let bookCoverURL = '';
         
         if (bookCoverFile) {
-                // Convert to base64 to avoid CORS issues
-                try {
-                    const reader = new FileReader();
-                    const base64Promise = new Promise((resolve, reject) => {
-                        reader.onload = () => resolve(reader.result);
-                        reader.onerror = reject;
-                    });
-                    reader.readAsDataURL(bookCoverFile);
-                    bookCoverURL = await base64Promise;
-                    console.log('Image converted to base64 successfully');
-                } catch (base64Error) {
-                    console.error('Error converting image to base64:', base64Error);
-                    alert('خطا در پردازش تصویر. لطفاً بدون تصویر پست را ارسال کنید.');
-                    submitButton.textContent = originalButtonText;
-                    submitButton.disabled = false;
-                    return;
-                }
+            try {
+                bookCoverURL = await resizeAndCompressImage(bookCoverFile, 256, 0.7);
+                console.log('Image resized and converted to base64 successfully');
+            } catch (base64Error) {
+                console.error('Error resizing/converting image to base64:', base64Error);
+                alert('خطا در پردازش تصویر. لطفاً بدون تصویر پست را ارسال کنید.');
+                submitButton.textContent = originalButtonText;
+                submitButton.disabled = false;
+                return;                }
+            }
         }
         
         const postData = {
