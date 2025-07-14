@@ -435,15 +435,17 @@ const logoutButton = document.getElementById('logout-button');
     });
 
     // Book Cover Image Preview
-    bookCoverUpload.addEventListener('change', (event) => {
+    bookCoverUpload.addEventListener('change', async (event) => {
         const file = event.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                bookCoverPreview.src = e.target.result;
+            try {
+                const previewUrl = await resizeAndCompressImage(file, 256, 0.7);
+                bookCoverPreview.src = previewUrl;
                 bookCoverPreview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
+            } catch (err) {
+                bookCoverPreview.style.display = 'none';
+                bookCoverPreview.src = '#';
+            }
         } else {
             bookCoverPreview.style.display = 'none';
             bookCoverPreview.src = '#';
