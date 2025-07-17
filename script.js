@@ -684,18 +684,18 @@ const logoutButton = document.getElementById('logout-button');
                             comment.userId === currentUser.uid
                         );
         
-                        if (!isProfileView) {
-                            const usernameEl = postCard.querySelector('.post-username');
-                            if (usernameEl) {
-                                usernameEl.style.cursor = 'pointer';
-                                usernameEl.addEventListener('click', () => showUserProfile(post.userId));
-                            }
-                            const avatarEl = postCard.querySelector('.post-avatar');
-                            if (avatarEl) {
-                                avatarEl.style.cursor = 'pointer';
-                                avatarEl.addEventListener('click', () => showUserProfile(post.userId));
-                            }
-                        }
+        if (!isProfileView) {
+            const usernameEl = postCard.querySelector('.post-username');
+            if (usernameEl) {
+                usernameEl.style.cursor = 'pointer';
+                usernameEl.addEventListener('click', () => showUserProfile(post.userId));
+            }
+            const avatarEl = postCard.querySelector('.post-avatar');
+            if (avatarEl) {
+                avatarEl.style.cursor = 'pointer';
+                avatarEl.addEventListener('click', () => showUserProfile(post.userId));
+    }
+}
                         
                         console.log(`Comment ${comment.id} - Can delete: ${canDeleteComment}, Comment author: ${comment.userId}, Current user: ${currentUser?.uid}`);
                         
