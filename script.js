@@ -83,6 +83,14 @@ const logoutButton = document.getElementById('logout-button');
     const profilePhotoUpload = document.getElementById('profile-photo-upload');
     const profileAvatar = document.getElementById('profile-avatar');
 
+    profileAvatar.addEventListener('click', () => {
+        if (userProfile && userProfile.bio) {
+            alert(userProfile.bio);
+        } else {
+            alert('بیو برای این کاربر ثبت نشده است.');
+        }
+    });
+
     let currentUser = null; // Stores current logged-in user
     let posts = []; // Stores all posts
     let userProfile = null; // Stores user profile data
@@ -683,19 +691,6 @@ const logoutButton = document.getElementById('logout-button');
                             userProfile?.role === 'admin' || 
                             comment.userId === currentUser.uid
                         );
-        
-        if (!isProfileView) {
-            const usernameEl = postCard.querySelector('.post-username');
-            if (usernameEl) {
-                usernameEl.style.cursor = 'pointer';
-                usernameEl.addEventListener('click', () => showUserProfile(post.userId));
-            }
-            const avatarEl = postCard.querySelector('.post-avatar');
-            if (avatarEl) {
-                avatarEl.style.cursor = 'pointer';
-                avatarEl.addEventListener('click', () => showUserProfile(post.userId));
-    }
-}
                         
                         console.log(`Comment ${comment.id} - Can delete: ${canDeleteComment}, Comment author: ${comment.userId}, Current user: ${currentUser?.uid}`);
                         
