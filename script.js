@@ -320,6 +320,32 @@ const logoutButton = document.getElementById('logout-button');
         }
     };
 
+    const showUserProfile = async (uid) => {
+        await loadUserProfile(uid);
+        profileUsername.textContent = userProfile?.username || userProfile?.email || 'کاربر';
+        profileRole.textContent = userProfile?.role || 'کاربر';
+        profileBio.textContent = userProfile?.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
+        if (profileBio.querySelector('textarea')) {
+            profileBio.innerHTML = userProfile?.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
+        }
+        if (userProfile?.photoURL) {
+            updateProfilePhoto(userProfile.photoURL);
+        } else {
+            updateProfilePhoto(null);
+        }
+        // دکمه‌های ویرایش فقط برای خود کاربر
+        if (currentUser && uid === currentUser.uid) {
+            editBioButton.style.display = 'flex';
+            changePhotoButton.style.display = 'flex';
+            logoutButton.style.display = 'block';
+        } else {
+            editBioButton.style.display = 'none';
+            changePhotoButton.style.display = 'none';
+            logoutButton.style.display = 'none';
+        }
+        showScreen('profile-screen');
+    };
+
     // Function to show a specific screen
     const showScreen = (screenId) => {
         console.log('Showing screen:', screenId);
@@ -657,6 +683,19 @@ const logoutButton = document.getElementById('logout-button');
                             userProfile?.role === 'admin' || 
                             comment.userId === currentUser.uid
                         );
+        
+                        if (!isProfileView) {
+                            const usernameEl = postCard.querySelector('.post-username');
+                            if (usernameEl) {
+                                usernameEl.style.cursor = 'pointer';
+                                usernameEl.addEventListener('click', () => showUserProfile(post.userId));
+                            }
+                            const avatarEl = postCard.querySelector('.post-avatar');
+                            if (avatarEl) {
+                                avatarEl.style.cursor = 'pointer';
+                                avatarEl.addEventListener('click', () => showUserProfile(post.userId));
+                            }
+                        }
                         
                         console.log(`Comment ${comment.id} - Can delete: ${canDeleteComment}, Comment author: ${comment.userId}, Current user: ${currentUser?.uid}`);
                         
