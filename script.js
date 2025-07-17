@@ -83,14 +83,6 @@ const logoutButton = document.getElementById('logout-button');
     const profilePhotoUpload = document.getElementById('profile-photo-upload');
     const profileAvatar = document.getElementById('profile-avatar');
 
-    profileAvatar.addEventListener('click', () => {
-        if (userProfile && userProfile.bio) {
-            alert(userProfile.bio);
-        } else {
-            alert('بیو برای این کاربر ثبت نشده است.');
-        }
-    });
-
     let currentUser = null; // Stores current logged-in user
     let posts = []; // Stores all posts
     let userProfile = null; // Stores user profile data
