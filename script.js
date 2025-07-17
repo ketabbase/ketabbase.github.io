@@ -320,32 +320,6 @@ const logoutButton = document.getElementById('logout-button');
         }
     };
 
-    const showUserProfile = async (uid) => {
-        await loadUserProfile(uid);
-        profileUsername.textContent = userProfile?.username || userProfile?.email || 'کاربر';
-        profileRole.textContent = userProfile?.role || 'کاربر';
-        profileBio.textContent = userProfile?.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
-        if (profileBio.querySelector('textarea')) {
-            profileBio.innerHTML = userProfile?.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
-        }
-        if (userProfile?.photoURL) {
-            updateProfilePhoto(userProfile.photoURL);
-        } else {
-            updateProfilePhoto(null);
-        }
-        // دکمه‌های ویرایش فقط برای خود کاربر
-        if (currentUser && uid === currentUser.uid) {
-            editBioButton.style.display = 'flex';
-            changePhotoButton.style.display = 'flex';
-            logoutButton.style.display = 'block';
-        } else {
-            editBioButton.style.display = 'none';
-            changePhotoButton.style.display = 'none';
-            logoutButton.style.display = 'none';
-        }
-        showScreen('profile-screen');
-    };
-
     // Function to show a specific screen
     const showScreen = (screenId) => {
         console.log('Showing screen:', screenId);
