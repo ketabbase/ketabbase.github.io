@@ -633,7 +633,7 @@ const logoutButton = document.getElementById('logout-button');
             <div class="post-content">
                 ${post.bookCoverURL ? `<img src="${post.bookCoverURL}" alt="Book Cover" class="book-cover">` : ''}
                 <h3 class="book-title">${post.bookTitle}</h3>
-                <p class="book-author">نویسنده: ${post.bookAuthor}</p>
+                <p class="book-author"> ${post.bookAuthor}</p>
                 <blockquote class="book-quote">"${post.bookQuote}"</blockquote>
             </div>
             <div class="post-actions">
