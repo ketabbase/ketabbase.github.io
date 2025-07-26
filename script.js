@@ -88,8 +88,145 @@ const logoutButton = document.getElementById('logout-button');
     let userProfile = null; // Stores user profile data
     let isLoadingPosts = true; // Track if posts are still loading
     let userProfiles = {}; // Stores all user profiles for avatars
+    
+    // Check for saved auth state
+    const savedUser = localStorage.getItem('ketabboard_user');
+    if (savedUser) {
+        try {
+            const userData = JSON.parse(savedUser);
+            console.log('Found saved user data:', userData);
+        } catch (error) {
+            console.error('Error parsing saved user data:', error);
+            localStorage.removeItem('ketabboard_user');
+        }
+    }
 
-    // === My Books Section ===
+    // بارگذاری همه پست‌ها و کامنت‌ها برای همه کاربران (مهمان و لاگین)
+    const loadPostsAndComments = () => {
+        console.log('Loading posts and comments for all users...');
+        console.log('Firebase db available:', !!window.firebase?.db);
+        
+        // Show loading state immediately
+        if (postsList) {
+            postsList.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>در حال بارگذاری پست‌ها...</p>
+                </div>
+            `;
+        }
+        
+        // Try to load posts with timeout
+        const loadPostsWithTimeout = () => {
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error('Firebase connection timeout'));
+                }, 15000); // 15 second timeout
+                
+                try {
+                                // Load all user profiles first
+            loadAllUserProfiles().then(async () => {
+                // Wait a bit for userProfile to be loaded if user is logged in
+                if (currentUser) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                console.log('User profiles loaded, now loading posts...');
+                
+                // Re-render posts to update avatars with loaded profiles
+                if (posts.length > 0) {
+                    console.log('Re-rendering posts to update avatars...');
+                    renderPosts();
+                    // Also update existing avatars without full re-render
+                    setTimeout(() => {
+                        updateAllAvatars();
+                    }, 100);
+                }
+                        
+                        // Test Firebase connection first
+                        console.log('Testing Firebase connection...');
+                        try {
+                            const testCollection = collection(window.firebase.db, 'test');
+                            const testDoc = await addDoc(testCollection, { test: true, timestamp: serverTimestamp() });
+                            console.log('Firebase connection test successful, created test doc:', testDoc.id);
+                            await deleteDoc(doc(window.firebase.db, 'test', testDoc.id));
+                            console.log('Test doc deleted successfully');
+                        } catch (testError) {
+                            console.error('Firebase connection test failed:', testError);
+                        }
+                        
+                        // Test if posts collection exists
+                        console.log('Testing posts collection...');
+                        try {
+                            const postsCollection = collection(window.firebase.db, 'posts');
+                            const postsSnapshot = await getDocs(postsCollection);
+                            console.log('Posts collection test - docs count:', postsSnapshot.docs.length);
+                            postsSnapshot.forEach(doc => {
+                                console.log('Existing post:', doc.id, doc.data());
+                            });
+                        } catch (postsTestError) {
+                            console.error('Posts collection test failed:', postsTestError);
+                        }
+                        
+                        // Load posts with real-time listener
+                        const postsQuery = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
+                        console.log('Posts query created:', postsQuery);
+                        
+                        const unsubscribe = onSnapshot(postsQuery, async (snapshot) => {
+                            clearTimeout(timeout);
+                            console.log('Posts snapshot received, docs count:', snapshot.docs.length);
+                            console.log('Snapshot metadata:', snapshot.metadata);
+                            console.log('Snapshot empty:', snapshot.empty);
+                            
+                            const newPosts = [];
+                            for (const doc of snapshot.docs) {
+                                const postData = { id: doc.id, ...doc.data() };
+                                console.log('Post data:', postData);
+                                newPosts.push(postData);
+                            }
+                            
+                            // Update posts immediately
+                            posts = newPosts;
+                            isLoadingPosts = false;
+                            
+                            // Shuffle posts before rendering
+                            // Remove this line to show posts by newest first (default order)
+                            // shuffleArray(posts);
+
+                            console.log(`Updated posts array with ${newPosts.length} posts`);
+                            
+                            // Load comments for all posts before rendering
+                            await loadCommentsForAllPosts();
+                            
+                            // Now render posts with comments
+                            renderPosts();
+                            console.log(`Loaded ${newPosts.length} posts`);
+                            resolve();
+                        }, (error) => {
+                            clearTimeout(timeout);
+                            console.error('Error in posts snapshot:', error);
+                            reject(error);
+                        });
+                    }).catch(error => {
+                        clearTimeout(timeout);
+                        console.error('Error loading user profiles:', error);
+                        reject(error);
+                    });
+                } catch (error) {
+                    clearTimeout(timeout);
+                    console.error('Error in loadPostsWithTimeout:', error);
+                    reject(error);
+                }
+            });
+        };
+        
+        // Try to load posts, fallback to offline message if failed
+        loadPostsWithTimeout().catch(error => {
+            console.error('Failed to load posts:', error);
+            isLoadingPosts = false;
+        });
+    };
+
+// === My Books Section ===
 // Helper: Generate unique ID for books
 function generateBookId() {
     return 'book_' + Math.random().toString(36).substr(2, 9);
@@ -291,143 +428,6 @@ loadUserProfile = async function(uid) {
     if (!userProfile.books) userProfile.books = [];
     renderBooksList();
 };
-    
-    // Check for saved auth state
-    const savedUser = localStorage.getItem('ketabboard_user');
-    if (savedUser) {
-        try {
-            const userData = JSON.parse(savedUser);
-            console.log('Found saved user data:', userData);
-        } catch (error) {
-            console.error('Error parsing saved user data:', error);
-            localStorage.removeItem('ketabboard_user');
-        }
-    }
-
-    // بارگذاری همه پست‌ها و کامنت‌ها برای همه کاربران (مهمان و لاگین)
-    const loadPostsAndComments = () => {
-        console.log('Loading posts and comments for all users...');
-        console.log('Firebase db available:', !!window.firebase?.db);
-        
-        // Show loading state immediately
-        if (postsList) {
-            postsList.innerHTML = `
-                <div class="loading-state">
-                    <div class="loading-spinner"></div>
-                    <p>در حال بارگذاری پست‌ها...</p>
-                </div>
-            `;
-        }
-        
-        // Try to load posts with timeout
-        const loadPostsWithTimeout = () => {
-            return new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                    reject(new Error('Firebase connection timeout'));
-                }, 15000); // 15 second timeout
-                
-                try {
-                                // Load all user profiles first
-            loadAllUserProfiles().then(async () => {
-                // Wait a bit for userProfile to be loaded if user is logged in
-                if (currentUser) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
-                console.log('User profiles loaded, now loading posts...');
-                
-                // Re-render posts to update avatars with loaded profiles
-                if (posts.length > 0) {
-                    console.log('Re-rendering posts to update avatars...');
-                    renderPosts();
-                    // Also update existing avatars without full re-render
-                    setTimeout(() => {
-                        updateAllAvatars();
-                    }, 100);
-                }
-                        
-                        // Test Firebase connection first
-                        console.log('Testing Firebase connection...');
-                        try {
-                            const testCollection = collection(window.firebase.db, 'test');
-                            const testDoc = await addDoc(testCollection, { test: true, timestamp: serverTimestamp() });
-                            console.log('Firebase connection test successful, created test doc:', testDoc.id);
-                            await deleteDoc(doc(window.firebase.db, 'test', testDoc.id));
-                            console.log('Test doc deleted successfully');
-                        } catch (testError) {
-                            console.error('Firebase connection test failed:', testError);
-                        }
-                        
-                        // Test if posts collection exists
-                        console.log('Testing posts collection...');
-                        try {
-                            const postsCollection = collection(window.firebase.db, 'posts');
-                            const postsSnapshot = await getDocs(postsCollection);
-                            console.log('Posts collection test - docs count:', postsSnapshot.docs.length);
-                            postsSnapshot.forEach(doc => {
-                                console.log('Existing post:', doc.id, doc.data());
-                            });
-                        } catch (postsTestError) {
-                            console.error('Posts collection test failed:', postsTestError);
-                        }
-                        
-                        // Load posts with real-time listener
-                        const postsQuery = query(collection(window.firebase.db, 'posts'), orderBy('timestamp', 'desc'));
-                        console.log('Posts query created:', postsQuery);
-                        
-                        const unsubscribe = onSnapshot(postsQuery, async (snapshot) => {
-                            clearTimeout(timeout);
-                            console.log('Posts snapshot received, docs count:', snapshot.docs.length);
-                            console.log('Snapshot metadata:', snapshot.metadata);
-                            console.log('Snapshot empty:', snapshot.empty);
-                            
-                            const newPosts = [];
-                            for (const doc of snapshot.docs) {
-                                const postData = { id: doc.id, ...doc.data() };
-                                console.log('Post data:', postData);
-                                newPosts.push(postData);
-                            }
-                            
-                            // Update posts immediately
-                            posts = newPosts;
-                            isLoadingPosts = false;
-                            
-                            // Shuffle posts before rendering
-                            // Remove this line to show posts by newest first (default order)
-                            // shuffleArray(posts);
-
-                            console.log(`Updated posts array with ${newPosts.length} posts`);
-                            
-                            // Load comments for all posts before rendering
-                            await loadCommentsForAllPosts();
-                            
-                            // Now render posts with comments
-                            renderPosts();
-                            console.log(`Loaded ${newPosts.length} posts`);
-                            resolve();
-                        }, (error) => {
-                            clearTimeout(timeout);
-                            console.error('Error in posts snapshot:', error);
-                            reject(error);
-                        });
-                    }).catch(error => {
-                        clearTimeout(timeout);
-                        console.error('Error loading user profiles:', error);
-                        reject(error);
-                    });
-                } catch (error) {
-                    clearTimeout(timeout);
-                    console.error('Error in loadPostsWithTimeout:', error);
-                    reject(error);
-                }
-            });
-        };
-        
-        // Try to load posts, fallback to offline message if failed
-        loadPostsWithTimeout().catch(error => {
-            console.error('Failed to load posts:', error);
-            isLoadingPosts = false;
-        });
-    };
 
     const loadCommentsForAllPosts = async () => {
         return new Promise((resolve) => {
