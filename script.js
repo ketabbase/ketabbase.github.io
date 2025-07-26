@@ -88,6 +88,209 @@ const logoutButton = document.getElementById('logout-button');
     let userProfile = null; // Stores user profile data
     let isLoadingPosts = true; // Track if posts are still loading
     let userProfiles = {}; // Stores all user profiles for avatars
+
+    // === My Books Section ===
+// Helper: Generate unique ID for books
+function generateBookId() {
+    return 'book_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Render books list in profile
+function renderBooksList() {
+    const profileScreen = document.getElementById('profile-screen');
+    let booksSection = document.getElementById('my-books-section');
+    if (!booksSection) {
+        booksSection = document.createElement('div');
+        booksSection.id = 'my-books-section';
+        booksSection.innerHTML = `<h3 style="margin-top:2rem;">کتاب‌های من</h3>
+            <div id="books-list"></div>
+            <button id="add-book-btn" class="submit-button" style="margin-top:1rem;">افزودن کتاب</button>`;
+        profileScreen.insertBefore(booksSection, profileScreen.querySelector('.user-posts-list'));
+    }
+    const booksList = booksSection.querySelector('#books-list');
+    booksList.innerHTML = '';
+    const books = userProfile?.books || [];
+    if (books.length === 0) {
+        booksList.innerHTML = '<p style="color:#888;">هنوز کتابی اضافه نکرده‌اید.</p>';
+    } else {
+        books.forEach(book => {
+            const card = document.createElement('div');
+            card.className = 'book-card';
+            card.style = 'background:#f7f7fa;border-radius:12px;padding:1rem;margin-bottom:1rem;box-shadow:0 1px 4px #0001;position:relative;';
+            card.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div>
+                        <strong>${book.title}</strong>
+                        <span style="color:#666;font-size:0.9em;"> (${book.author})</span>
+                    </div>
+                    <div>
+                        <button class="edit-book-btn" data-id="${book.id}" style="background:none;border:none;color:#555;cursor:pointer;margin-left:4px;"><span class="material-icons">edit</span></button>
+                        <button class="delete-book-btn" data-id="${book.id}" style="background:none;border:none;color:#c00;cursor:pointer;"><span class="material-icons">delete</span></button>
+                    </div>
+                </div>
+                <div style="margin-top:0.5rem;">
+                    <span style="font-size:0.95em;">وضعیت: <span style="font-weight:bold;">${book.status === 'read' ? 'خواندم' : book.status === 'reading' ? 'در حال خواندن' : 'می‌خواهم بخوانم'}</span></span>
+                </div>
+                ${book.status === 'reading' ? `<div style='margin-top:0.5rem;'><input type='range' min='0' max='100' value='${book.progress||0}' class='progress-bar' data-id='${book.id}' style='width:70%;vertical-align:middle;'><span style='margin-right:8px;'>${book.progress||0}%</span></div>` : ''}
+            `;
+            booksList.appendChild(card);
+        });
+    }
+    // Add listeners for edit/delete/progress
+    booksList.querySelectorAll('.delete-book-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            const id = btn.getAttribute('data-id');
+            deleteBook(id);
+        };
+    });
+    booksList.querySelectorAll('.edit-book-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            const id = btn.getAttribute('data-id');
+            openBookForm(userProfile.books.find(b=>b.id===id));
+        };
+    });
+    booksList.querySelectorAll('.progress-bar').forEach(bar => {
+        bar.oninput = (e) => {
+            const id = bar.getAttribute('data-id');
+            updateBookProgress(id, parseInt(bar.value));
+        };
+    });
+    // Add book button
+    booksSection.querySelector('#add-book-btn').onclick = () => openBookForm();
+}
+
+// Book form modal
+function openBookForm(book) {
+    let modal = document.getElementById('book-form-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'book-form-modal';
+        modal.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#0007;z-index:1000;display:flex;align-items:center;justify-content:center;';
+        modal.innerHTML = `<div style='background:#fff;padding:2rem 1.5rem;border-radius:16px;min-width:300px;max-width:90vw;box-shadow:0 2px 16px #0002;position:relative;'>
+            <button id='close-book-form' style='position:absolute;top:8px;left:8px;background:none;border:none;font-size:1.5em;cursor:pointer;color:#888;'><span class='material-icons'>close</span></button>
+            <h3 style='margin-bottom:1rem;'>${book ? 'ویرایش کتاب' : 'افزودن کتاب'}</h3>
+            <form id='book-form'>
+                <div class='form-group'><label>عنوان کتاب:<input type='text' id='book-title-input' required style='width:100%;margin-top:4px;'></label></div>
+                <div class='form-group'><label>نویسنده:<input type='text' id='book-author-input' required style='width:100%;margin-top:4px;'></label></div>
+                <div class='form-group'><label>وضعیت:
+                    <select id='book-status-input' style='width:100%;margin-top:4px;'>
+                        <option value='read'>خواندم</option>
+                        <option value='reading'>در حال خواندن</option>
+                        <option value='want'>می‌خواهم بخوانم</option>
+                    </select>
+                </label></div>
+                <div class='form-group' id='progress-group' style='display:none;'><label>درصد پیشرفت:
+                    <input type='range' min='0' max='100' id='book-progress-input' value='0' style='width:80%;vertical-align:middle;'><span id='progress-value' style='margin-right:8px;'>0%</span>
+                </label></div>
+                <button type='submit' class='submit-button' style='margin-top:1rem;width:100%;'>${book ? 'ذخیره تغییرات' : 'افزودن'}</button>
+            </form>
+        </div>`;
+        document.body.appendChild(modal);
+    }
+    modal.style.display = 'flex';
+    // Fill form if editing
+    const form = modal.querySelector('#book-form');
+    form.reset();
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const title = form.querySelector('#book-title-input').value.trim();
+        const author = form.querySelector('#book-author-input').value.trim();
+        const status = form.querySelector('#book-status-input').value;
+        const progress = status === 'reading' ? parseInt(form.querySelector('#book-progress-input').value) : 0;
+        if (book) {
+            updateBook({ ...book, title, author, status, progress });
+        } else {
+            addBook({ id: generateBookId(), title, author, status, progress });
+        }
+        modal.style.display = 'none';
+    };
+    // Show/hide progress
+    const statusInput = form.querySelector('#book-status-input');
+    const progressGroup = form.querySelector('#progress-group');
+    const progressInput = form.querySelector('#book-progress-input');
+    const progressValue = form.querySelector('#progress-value');
+    statusInput.onchange = () => {
+        if (statusInput.value === 'reading') {
+            progressGroup.style.display = 'block';
+        } else {
+            progressGroup.style.display = 'none';
+        }
+    };
+    progressInput.oninput = () => {
+        progressValue.textContent = progressInput.value + '%';
+    };
+    // Fill values if editing
+    if (book) {
+        form.querySelector('#book-title-input').value = book.title;
+        form.querySelector('#book-author-input').value = book.author;
+        statusInput.value = book.status;
+        if (book.status === 'reading') {
+            progressGroup.style.display = 'block';
+            progressInput.value = book.progress || 0;
+            progressValue.textContent = (book.progress || 0) + '%';
+        } else {
+            progressGroup.style.display = 'none';
+        }
+    } else {
+        progressGroup.style.display = 'none';
+        progressInput.value = 0;
+        progressValue.textContent = '0%';
+    }
+    // Close modal
+    modal.querySelector('#close-book-form').onclick = () => {
+        modal.style.display = 'none';
+    };
+}
+
+// Add, update, delete, progress functions
+function addBook(book) {
+    if (!userProfile.books) userProfile.books = [];
+    userProfile.books.push(book);
+    saveBooksToFirestore();
+    renderBooksList();
+}
+function updateBook(book) {
+    if (!userProfile.books) return;
+    const idx = userProfile.books.findIndex(b => b.id === book.id);
+    if (idx !== -1) {
+        userProfile.books[idx] = book;
+        saveBooksToFirestore();
+        renderBooksList();
+    }
+}
+function deleteBook(id) {
+    if (!userProfile.books) return;
+    userProfile.books = userProfile.books.filter(b => b.id !== id);
+    saveBooksToFirestore();
+    renderBooksList();
+}
+function updateBookProgress(id, progress) {
+    if (!userProfile.books) return;
+    const book = userProfile.books.find(b => b.id === id);
+    if (book && book.status === 'reading') {
+        book.progress = progress;
+        saveBooksToFirestore();
+        renderBooksList();
+    }
+}
+async function saveBooksToFirestore() {
+    if (!currentUser || !userProfile) return;
+    const usersRef = collection(window.firebase.db, 'users');
+    const q = query(usersRef, where('uid', '==', currentUser.uid));
+    const snapshot = await getDocs(q);
+    if (!snapshot.empty) {
+        const userDoc = snapshot.docs[0];
+        await updateDoc(doc(window.firebase.db, 'users', userDoc.id), { books: userProfile.books });
+    }
+}
+
+// اطمینان از نمایش لیست کتاب‌ها بعد از بارگذاری پروفایل
+const origLoadUserProfile = loadUserProfile;
+loadUserProfile = async function(uid) {
+    await origLoadUserProfile(uid);
+    if (!userProfile.books) userProfile.books = [];
+    renderBooksList();
+};
     
     // Check for saved auth state
     const savedUser = localStorage.getItem('ketabboard_user');
