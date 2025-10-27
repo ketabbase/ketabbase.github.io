@@ -51,6 +51,28 @@
                     <p>نقش: <span id="profile-role">کاربر</span></p>
                     <button class="submit-button" id="logout-button">خروج از حساب</button>
                 </div>
+                
+                <!-- Personal Library Section -->
+                <div class="library-section">
+                    <div class="library-header">
+                        <h3>کتابخانه شخصی</h3>
+                        <button class="add-library-item-button" id="add-library-item-button">
+                            <span class="material-icons">library_add</span> افزودن به کتابخانه
+                        </button>
+                    </div>
+                    
+                    <div class="library-filter-tabs">
+                        <button class="filter-tab active" data-status="all">همه</button>
+                        <button class="filter-tab" data-status="completed">خوانده/دیده شده</button>
+                        <button class="filter-tab" data-status="reading">در حال خواندن/تماشا</button>
+                        <button class="filter-tab" data-status="want">می‌خواهم ببینم</button>
+                    </div>
+                    
+                    <div class="library-items-list" id="library-items-list">
+                        <!-- Library items will be loaded here -->
+                    </div>
+                </div>
+
                 <h3>پست‌های من</h3>
                 <div class="user-posts-list posts-list">
                     <!-- User posts will be loaded here dynamically -->
@@ -79,6 +101,58 @@
                     </div>
                     <button type="submit" class="submit-button">ارسال پست</button>
                     <button type="button" class="cancel-button" id="cancel-post-button">انصراف</button>
+                </form>
+            </section>
+
+            <section id="add-library-item-screen" class="screen">
+                <h2>افزودن به کتابخانه شخصی</h2>
+                <form id="new-library-item-form">
+                    <div class="form-group">
+                        <label for="library-item-type">نوع:</label>
+                        <select id="library-item-type" required>
+                            <option value="book">کتاب</option>
+                            <option value="movie">فیلم</option>
+                            <option value="series">سریال</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="library-item-title">عنوان:</label>
+                        <input type="text" id="library-item-title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="library-item-author">نام نویسنده/کارگردان:</label>
+                        <input type="text" id="library-item-author" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="library-item-status">وضعیت:</label>
+                        <select id="library-item-status" required>
+                            <option value="want">می‌خواهم بخوانم/ببینم</option>
+                            <option value="reading">در حال خواندن/تماشا</option>
+                            <option value="completed">خوانده/دیده شده</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="library-item-rating">امتیاز (اختیاری):</label>
+                        <select id="library-item-rating">
+                            <option value="">انتخاب کنید</option>
+                            <option value="5">⭐⭐⭐⭐⭐ عالی</option>
+                            <option value="4">⭐⭐⭐⭐ خوب</option>
+                            <option value="3">⭐⭐⭐ متوسط</option>
+                            <option value="2">⭐⭐ ضعیف</option>
+                            <option value="1">⭐ خیلی ضعیف</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="library-item-notes">یادداشت شخصی (اختیاری):</label>
+                        <textarea id="library-item-notes" rows="3" placeholder="نظرات و یادداشت‌های شخصی..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="library-item-cover">عکس جلد (اختیاری):</label>
+                        <input type="file" id="library-item-cover" accept="image/*">
+                        <img id="library-item-cover-preview" src="#" alt="Cover Preview" style="display: none; max-width: 100px; margin-top: 10px;">
+                    </div>
+                    <button type="submit" class="submit-button">افزودن به کتابخانه</button>
+                    <button type="button" class="cancel-button" id="cancel-library-item-button">انصراف</button>
                 </form>
             </section>
 

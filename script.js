@@ -83,11 +83,24 @@ const logoutButton = document.getElementById('logout-button');
     const profilePhotoUpload = document.getElementById('profile-photo-upload');
     const profileAvatar = document.getElementById('profile-avatar');
 
+    // Personal Library Elements
+    const addLibraryItemButton = document.getElementById('add-library-item-button');
+    const cancelLibraryItemButton = document.getElementById('cancel-library-item-button');
+    const newLibraryItemForm = document.getElementById('new-library-item-form');
+    const libraryItemsList = document.getElementById('library-items-list');
+    const libraryItemCoverUpload = document.getElementById('library-item-cover');
+    const libraryItemCoverPreview = document.getElementById('library-item-cover-preview');
+    const filterTabs = document.querySelectorAll('.filter-tab');
+
     let currentUser = null; // Stores current logged-in user
     let posts = []; // Stores all posts
     let userProfile = null; // Stores user profile data
     let isLoadingPosts = true; // Track if posts are still loading
     let userProfiles = {}; // Stores all user profiles for avatars
+    
+    // Personal Library Data
+    let userLibraryItems = []; // Stores current user's library items
+    let currentLibraryFilter = 'all'; // Current filter status
     
     // Check for saved auth state
     const savedUser = localStorage.getItem('ketabboard_user');
@@ -371,6 +384,16 @@ const logoutButton = document.getElementById('logout-button');
             profileBio.textContent = userProfile?.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
             editBioButton.style.display = 'flex';
             changePhotoButton.style.display = 'flex';
+            
+            // Show library section and load library items
+            const librarySection = document.querySelector('.library-section');
+            if (librarySection) {
+                librarySection.style.display = 'block';
+                if (screenId === 'profile-screen') {
+                    loadUserLibraryItems();
+                }
+            }
+            
             if (profileBio.querySelector('textarea')) {
                 profileBio.innerHTML = userProfile?.bio || 'علاقه‌مند به ادبیات کلاسیک و فلسفه';
             }
@@ -389,6 +412,13 @@ const logoutButton = document.getElementById('logout-button');
             profileBio.textContent = 'برای مشاهده و ارسال پست وارد شوید.';
             editBioButton.style.display = 'none';
             changePhotoButton.style.display = 'none';
+            
+            // Hide library section for guests
+            const librarySection = document.querySelector('.library-section');
+            if (librarySection) {
+                librarySection.style.display = 'none';
+            }
+            
             updateProfilePhoto(null);
         }
 
@@ -432,6 +462,55 @@ const logoutButton = document.getElementById('logout-button');
         newPostForm.reset();
         bookCoverPreview.style.display = 'none';
         bookCoverPreview.src = '#';
+    });
+
+    // Personal Library Event Listeners
+    
+    // Add Library Item button
+    addLibraryItemButton.addEventListener('click', () => {
+        if (currentUser) {
+            showScreen('add-library-item-screen');
+        } else {
+            alert('لطفاً ابتدا وارد شوید تا بتوانید آیتم به کتابخانه اضافه کنید.');
+            showScreen('login-screen');
+        }
+    });
+
+    // Cancel Library Item button
+    cancelLibraryItemButton.addEventListener('click', () => {
+        resetLibraryForm();
+        showScreen('profile-screen');
+    });
+
+    // Library Item Cover Image Preview
+    libraryItemCoverUpload.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            try {
+                const previewUrl = await resizeAndCompressImage(file, 256, 0.7);
+                libraryItemCoverPreview.src = previewUrl;
+                libraryItemCoverPreview.style.display = 'block';
+            } catch (err) {
+                libraryItemCoverPreview.style.display = 'none';
+                libraryItemCoverPreview.src = '#';
+            }
+        } else {
+            libraryItemCoverPreview.style.display = 'none';
+            libraryItemCoverPreview.src = '#';
+        }
+    });
+
+    // Filter tabs for library
+    filterTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Update active tab
+            filterTabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            // Update current filter and re-render library items
+            currentLibraryFilter = tab.dataset.status;
+            renderLibraryItems();
+        });
     });
 
     // Book Cover Image Preview
@@ -519,6 +598,107 @@ const logoutButton = document.getElementById('logout-button');
             submitButton.disabled = false;
         }
     });
+
+    // Handle New Library Item Submission
+    newLibraryItemForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+    
+        if (!currentUser) {
+            alert('برای افزودن آیتم به کتابخانه باید وارد شوید.');
+            showScreen('login-screen');
+            return;
+        }
+    
+        const itemType = document.getElementById('library-item-type').value;
+        const itemTitle = document.getElementById('library-item-title').value;
+        const itemAuthor = document.getElementById('library-item-author').value;
+        const itemStatus = document.getElementById('library-item-status').value;
+        const itemRating = document.getElementById('library-item-rating').value;
+        const itemNotes = document.getElementById('library-item-notes').value;
+        const itemCoverFile = document.getElementById('library-item-cover').files[0];
+
+        // Show loading state
+        const submitButton = newLibraryItemForm.querySelector('button[type="submit"]');
+        const originalButtonText = submitButton.textContent;
+        const isEditing = submitButton.dataset.editingItemId;
+        submitButton.textContent = isEditing ? 'در حال به‌روزرسانی...' : 'در حال افزودن...';
+        submitButton.disabled = true;
+
+        try {
+            let itemCoverURL = '';
+        
+            if (itemCoverFile) {
+                try {
+                    itemCoverURL = await resizeAndCompressImage(itemCoverFile, 256, 0.7);
+                    console.log('Library item image resized and converted to base64 successfully');
+                } catch (base64Error) {
+                    console.error('Error resizing/converting library item image to base64:', base64Error);
+                    alert('خطا در پردازش تصویر. آیتم بدون تصویر اضافه خواهد شد.');
+                }
+            } else if (isEditing) {
+                // Keep existing cover if no new file selected during edit
+                const existingItem = userLibraryItems.find(i => i.id === isEditing);
+                itemCoverURL = existingItem?.coverURL || '';
+            }
+        
+            const libraryItemData = {
+                type: itemType,
+                title: itemTitle,
+                author: itemAuthor,
+                status: itemStatus,
+                rating: itemRating || null,
+                notes: itemNotes || '',
+                coverURL: itemCoverURL,
+                userId: currentUser.uid,
+                username: currentUser.displayName || currentUser.email,
+                timestamp: isEditing ? undefined : serverTimestamp() // Don't update timestamp on edit
+            };
+            
+            // Remove undefined values for edit
+            Object.keys(libraryItemData).forEach(key => {
+                if (libraryItemData[key] === undefined) {
+                    delete libraryItemData[key];
+                }
+            });
+        
+            if (isEditing) {
+                // Update existing item
+                await updateDoc(doc(window.firebase.db, 'library', isEditing), libraryItemData);
+                console.log('Library item updated successfully');
+            } else {
+                // Add new item
+                await addDoc(collection(window.firebase.db, 'library'), libraryItemData);
+                console.log('Library item added successfully');
+            }
+        
+            // Reset form and go back to profile
+            resetLibraryForm();
+            showScreen('profile-screen');
+        
+        } catch (error) {
+            console.error('Error saving library item:', error);
+            alert(isEditing ? 'خطا در به‌روزرسانی آیتم' : 'خطا در افزودن آیتم به کتابخانه');
+        } finally {
+            // Reset loading state
+            submitButton.textContent = originalButtonText;
+            submitButton.disabled = false;
+        }
+    });
+    
+    const resetLibraryForm = () => {
+        newLibraryItemForm.reset();
+        libraryItemCoverPreview.style.display = 'none';
+        libraryItemCoverPreview.src = '#';
+        
+        // Reset form to add mode
+        const submitButton = newLibraryItemForm.querySelector('button[type="submit"]');
+        submitButton.textContent = 'افزودن به کتابخانه';
+        delete submitButton.dataset.editingItemId;
+        
+        // Reset form title
+        const formTitle = document.querySelector('#add-library-item-screen h2');
+        formTitle.textContent = 'افزودن به کتابخانه شخصی';
+    };
 
     const renderPosts = () => {
         console.log('renderPosts called with', posts.length, 'posts');
@@ -721,6 +901,231 @@ const logoutButton = document.getElementById('logout-button');
 
 
         return postCard;
+    };
+
+    // Personal Library Functions
+    
+    const loadUserLibraryItems = async () => {
+        if (!currentUser) {
+            userLibraryItems = [];
+            renderLibraryItems();
+            return;
+        }
+        
+        try {
+            console.log('Loading library items for user:', currentUser.uid);
+            const libraryRef = collection(window.firebase.db, 'library');
+            const q = query(libraryRef, where('userId', '==', currentUser.uid), orderBy('timestamp', 'desc'));
+            
+            // Set up real-time listener for library items
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                console.log('Library items snapshot received, docs count:', snapshot.docs.length);
+                
+                const items = [];
+                snapshot.forEach((doc) => {
+                    const itemData = { id: doc.id, ...doc.data() };
+                    items.push(itemData);
+                });
+                
+                userLibraryItems = items;
+                console.log(`Loaded ${items.length} library items for user`);
+                renderLibraryItems();
+            }, (error) => {
+                console.error('Error loading library items:', error);
+                userLibraryItems = [];
+                renderLibraryItems();
+            });
+            
+        } catch (error) {
+            console.error('Error setting up library items listener:', error);
+            userLibraryItems = [];
+            renderLibraryItems();
+        }
+    };
+    
+    const renderLibraryItems = () => {
+        console.log('renderLibraryItems called with', userLibraryItems.length, 'items, filter:', currentLibraryFilter);
+        
+        if (!libraryItemsList) return;
+        
+        // Filter items based on current filter
+        let filteredItems = userLibraryItems;
+        if (currentLibraryFilter !== 'all') {
+            filteredItems = userLibraryItems.filter(item => item.status === currentLibraryFilter);
+        }
+        
+        // Clear existing items
+        libraryItemsList.innerHTML = '';
+        
+        if (filteredItems.length === 0) {
+            const emptyMessage = getEmptyLibraryMessage();
+            libraryItemsList.innerHTML = emptyMessage;
+            return;
+        }
+        
+        // Create library item cards
+        const fragment = document.createDocumentFragment();
+        filteredItems.forEach(item => {
+            const itemCard = createLibraryItemCard(item);
+            fragment.appendChild(itemCard);
+        });
+        
+        libraryItemsList.appendChild(fragment);
+    };
+    
+    const getEmptyLibraryMessage = () => {
+        const messages = {
+            'all': {
+                icon: 'library_books',
+                title: 'کتابخانه شما خالی است!',
+                subtitle: 'کتاب‌ها و فیلم‌های خود را به کتابخانه شخصی اضافه کنید.'
+            },
+            'completed': {
+                icon: 'done_all',
+                title: 'هنوز چیزی نخوانده/ندیده‌اید!',
+                subtitle: 'کتاب‌ها و فیلم‌های تمام شده خود را اضافه کنید.'
+            },
+            'reading': {
+                icon: 'menu_book',
+                title: 'در حال حاضر چیزی نمی‌خوانید/نمی‌بینید!',
+                subtitle: 'کتاب‌ها و فیلم‌های در حال مطالعه خود را اضافه کنید.'
+            },
+            'want': {
+                icon: 'bookmark_add',
+                title: 'لیست خواندنی/دیدنی شما خالی است!',
+                subtitle: 'کتاب‌ها و فیلم‌هایی که می‌خواهید ببینید را اضافه کنید.'
+            }
+        };
+        
+        const message = messages[currentLibraryFilter] || messages['all'];
+        
+        return `
+            <div class="library-no-items">
+                <span class="material-icons">${message.icon}</span>
+                <h4>${message.title}</h4>
+                <p>${message.subtitle}</p>
+            </div>
+        `;
+    };
+    
+    const createLibraryItemCard = (item) => {
+        const itemCard = document.createElement('div');
+        itemCard.classList.add('library-item');
+        itemCard.dataset.itemId = item.id;
+        
+        // Get status text and class
+        const statusInfo = getStatusInfo(item.status);
+        
+        // Get type text
+        const typeText = getTypeText(item.type);
+        
+        // Create rating display
+        const ratingDisplay = item.rating ? `<span class="library-item-rating">${'⭐'.repeat(parseInt(item.rating))}</span>` : '';
+        
+        // Create cover element
+        let coverElement = '';
+        if (item.coverURL) {
+            coverElement = `<img src="${item.coverURL}" alt="${item.title}" class="library-item-cover">`;
+        } else {
+            const icon = item.type === 'book' ? '📖' : item.type === 'movie' ? '🎬' : '📺';
+            coverElement = `<div class="library-item-cover-placeholder">${icon}</div>`;
+        }
+        
+        itemCard.innerHTML = `
+            ${coverElement}
+            <div class="library-item-info">
+                <div class="library-item-title">${item.title}</div>
+                <div class="library-item-author">${item.author}</div>
+                <div class="library-item-meta">
+                    <span class="library-item-type">${typeText}</span>
+                    <span class="library-item-status ${item.status}">${statusInfo.text}</span>
+                    ${ratingDisplay}
+                </div>
+                ${item.notes ? `<div class="library-item-notes">"${item.notes}"</div>` : ''}
+            </div>
+            <div class="library-item-actions">
+                <button class="library-item-action-btn edit-item-btn" data-item-id="${item.id}">
+                    <span class="material-icons">edit</span>
+                </button>
+                <button class="library-item-action-btn delete delete-item-btn" data-item-id="${item.id}">
+                    <span class="material-icons">delete</span>
+                </button>
+            </div>
+        `;
+        
+        // Add event listeners
+        const editBtn = itemCard.querySelector('.edit-item-btn');
+        const deleteBtn = itemCard.querySelector('.delete-item-btn');
+        
+        editBtn.addEventListener('click', () => editLibraryItem(item.id));
+        deleteBtn.addEventListener('click', () => deleteLibraryItem(item.id));
+        
+        return itemCard;
+    };
+    
+    const getStatusInfo = (status) => {
+        const statusMap = {
+            'completed': { text: 'خوانده/دیده شده', class: 'completed' },
+            'reading': { text: 'در حال خواندن/تماشا', class: 'reading' },
+            'want': { text: 'می‌خواهم ببینم', class: 'want' }
+        };
+        return statusMap[status] || { text: status, class: '' };
+    };
+    
+    const getTypeText = (type) => {
+        const typeMap = {
+            'book': 'کتاب',
+            'movie': 'فیلم',
+            'series': 'سریال'
+        };
+        return typeMap[type] || type;
+    };
+    
+    const editLibraryItem = (itemId) => {
+        const item = userLibraryItems.find(i => i.id === itemId);
+        if (!item) return;
+        
+        // Fill the form with existing data
+        document.getElementById('library-item-type').value = item.type;
+        document.getElementById('library-item-title').value = item.title;
+        document.getElementById('library-item-author').value = item.author;
+        document.getElementById('library-item-status').value = item.status;
+        document.getElementById('library-item-rating').value = item.rating || '';
+        document.getElementById('library-item-notes').value = item.notes || '';
+        
+        // Show cover preview if exists
+        if (item.coverURL) {
+            libraryItemCoverPreview.src = item.coverURL;
+            libraryItemCoverPreview.style.display = 'block';
+        }
+        
+        // Change form to edit mode
+        const submitButton = newLibraryItemForm.querySelector('button[type="submit"]');
+        submitButton.textContent = 'به‌روزرسانی آیتم';
+        submitButton.dataset.editingItemId = itemId;
+        
+        // Change form title
+        const formTitle = document.querySelector('#add-library-item-screen h2');
+        formTitle.textContent = 'ویرایش آیتم کتابخانه';
+        
+        showScreen('add-library-item-screen');
+    };
+    
+    const deleteLibraryItem = async (itemId) => {
+        if (!currentUser) return;
+        
+        const item = userLibraryItems.find(i => i.id === itemId);
+        if (!item) return;
+        
+        if (confirm(`آیا مطمئن هستید که می‌خواهید "${item.title}" را از کتابخانه حذف کنید؟`)) {
+            try {
+                await deleteDoc(doc(window.firebase.db, 'library', itemId));
+                console.log(`Library item ${itemId} deleted successfully`);
+            } catch (error) {
+                console.error('Error deleting library item:', error);
+                alert('خطا در حذف آیتم از کتابخانه');
+            }
+        }
     };
 
 
@@ -1459,6 +1864,9 @@ const logoutButton = document.getElementById('logout-button');
             console.log('Loading user profile...');
             await loadUserProfile(user.uid);
             
+            // Load user's personal library items
+            await loadUserLibraryItems();
+            
             // Debug: Log user status
             console.log('=== USER STATUS ===');
             console.log('User email:', user.email);
@@ -1500,6 +1908,10 @@ const logoutButton = document.getElementById('logout-button');
             userProfile = null;
             // Don't clear posts for guest users - they should still see posts
             renderPosts();
+            
+            // Clear library items for logged out users
+            userLibraryItems = [];
+            renderLibraryItems();
         }
         
         // Show appropriate screen based on auth state
